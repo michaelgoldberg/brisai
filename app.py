@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BrisAI — Thoroughbred Handicapping Intelligence</title>
+  <title>TrackIQ AI — Thoroughbred Handicapping Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -232,6 +232,68 @@
       margin-top: 0.15rem;
     }
 
+    /* ── EV TABLE ───────────────────────────────────────────── */
+    #ev-wrap { display: none; margin-bottom: 1.25rem; }
+    #ev-wrap.show { display: block; }
+    .ev-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .ev-header {
+      background: var(--navy);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ev-header-title {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .ev-header-sub { font-family: var(--mono); font-size: 0.7rem; color: #8A96A8; }
+    .ev-table { width: 100%; border-collapse: collapse; font-size: 0.825rem; }
+    .ev-table th {
+      padding: 0.6rem 1rem;
+      text-align: left;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8A96A8;
+      border-bottom: 1px solid var(--border);
+      background: #FAFBFC;
+    }
+    .ev-table td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid #F0F2F5;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+    .ev-table tr:last-child td { border-bottom: none; }
+    .ev-table tr:hover td { background: #FAFBFC; }
+    .ev-positive { color: #15803D; font-weight: 600; }
+    .ev-negative { color: #B91C1C; }
+    .ev-neutral  { color: #6B7280; }
+    .ev-footer {
+      padding: 0.75rem 1.25rem;
+      background: #FAFBFC;
+      border-top: 1px solid var(--border);
+      font-size: 0.775rem;
+      color: #6B7280;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .ev-footer strong { color: var(--text); }
+    .ev-loading { padding: 1.5rem; text-align: center; font-family: var(--mono); font-size: 0.8rem; color: #6B7280; }
+
     /* ── ANALYSIS OUTPUT ────────────────────────────────────── */
     #analysis-wrap { display: none; }
     #analysis-wrap.show { display: block; }
@@ -378,7 +440,7 @@
 <body>
 
   <header>
-    <div class="logo">Bris<span>AI</span></div>
+    <div class="logo">TrackIQ <span>AI</span></div>
     <div style="display:flex;align-items:center;gap:1rem;">
       <div class="trial-badge" id="trial-badge">⏱ <span id="trial-days-text"></span></div>
       <div class="badge">Powered by Claude</div>
@@ -446,6 +508,17 @@
       <div class="error-msg" id="err-3"></div>
     </div>
 
+    <!-- EV Table -->
+    <div id="ev-wrap">
+      <div class="ev-card">
+        <div class="ev-header">
+          <span class="ev-header-title">⚡ Fair Odds · Expected Value</span>
+          <span class="ev-header-sub">vs Morning Line</span>
+        </div>
+        <div id="ev-content"><div class="ev-loading">Calculating probabilities…</div></div>
+      </div>
+    </div>
+
     <!-- Analysis Output (appears below step 3) -->
     <div id="analysis-wrap">
       <div class="step active" style="display:block;">
@@ -461,7 +534,7 @@
 
   </main>
 
-  <footer>BrisAI · Trial Edition · Brisnet data + Claude AI</footer>
+  <footer>TrackIQ AI · Trial Edition · Brisnet data + Claude AI</footer>
 
   <script>
     // ── STATE ─────────────────────────────────────────────────
@@ -636,7 +709,45 @@
     const analysisBody = document.getElementById('analysis-body');
     const pulseEl      = document.getElementById('pulse-indicator');
 
-    btnAnalyze.addEventListener('click', () => {
+    // ── ANALYSIS + EV TABLE ───────────────────────────────────
+    const evWrap    = document.getElementById('ev-wrap');
+    const evContent = document.getElementById('ev-content');
+
+    function renderEVTable(sim) {
+      if (sim.error) {
+        evContent.innerHTML = `<div class="ev-loading" style="color:#B91C1C">${sim.error}</div>`;
+        return;
+      }
+
+      const colorClass = { positive: 'ev-positive', negative: 'ev-negative', neutral: 'ev-neutral' };
+
+      let rows = sim.rows.map(r => `
+        <tr>
+          <td>#${r.program_num}</td>
+          <td>${r.horse_name}</td>
+          <td>${r.win_prob_pct}</td>
+          <td>${r.fair_odds}</td>
+          <td>${r.morning_line}</td>
+          <td class="${colorClass[r.ev_color] || 'ev-neutral'}">${r.ev_label}</td>
+        </tr>`).join('');
+
+      evContent.innerHTML = `
+        <table class="ev-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Horse</th><th>Win %</th>
+              <th>Fair Odds</th><th>Morning Line</th><th>EV Signal</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="ev-footer">
+          <div><strong>Pace Advantage:</strong> ${sim.pace_advantage || '—'}</div>
+          <div><strong>Key Factor:</strong> ${sim.key_factor || '—'}</div>
+        </div>`;
+    }
+
+    btnAnalyze.addEventListener('click', async () => {
       if (!selectedRace) return;
       clearError(errEl3);
 
@@ -644,9 +755,26 @@
       analysisWrap.classList.add('show');
       pulseEl.classList.remove('hidden');
       btnAnalyze.disabled = true;
-      btnAnalyze.textContent = 'Analyzing…';
+      btnAnalyze.textContent = 'Calculating…';
 
-      analysisWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Show EV table loading state
+      evWrap.classList.add('show');
+      evContent.innerHTML = '<div class="ev-loading">⚡ Running probability simulation…</div>';
+      evWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Step 1: Fetch simulation (EV table)
+      try {
+        const simUrl = `/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedRace.key)}`;
+        const simRes = await fetch(simUrl);
+        const simData = await simRes.json();
+        renderEVTable(simData);
+      } catch (e) {
+        evContent.innerHTML = '<div class="ev-loading" style="color:#B91C1C">Simulation unavailable — see analysis below</div>';
+      }
+
+      // Step 2: Stream full analysis
+      btnAnalyze.textContent = 'Analyzing…';
+      document.getElementById('analysis-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedRace.key)}`;
       const es  = new EventSource(url);
@@ -693,6 +821,7 @@
         btnAnalyze.textContent = 'Run AI Analysis →';
       };
     });
+
   </script>
 </body>
 </html>
