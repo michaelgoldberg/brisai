@@ -2,7 +2,7 @@
 app.py - TrackIQ AI Handicapping Trial App
 Flask backend: contact capture -> file upload -> race parse -> Claude AI (streamed)
 Airtable fields: Email, FirstOpened, ExpiresAt, LastAccess, AccessCount, Blocked
-"""
+""" 
 
 import os
 import json
