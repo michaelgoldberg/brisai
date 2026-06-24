@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrackIQ AI — Thoroughbred Handicapping Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:      #1B2B4B;
+      --navy-deep: #111C33;
+      --gold:      #C9952A;
+      --gold-lt:   #E8B84B;
+      --green:     #2D7A4F;
+      --page-bg:   #ECEEF2;
+      --card-bg:   #FFFFFF;
+      --border:    #D8DCE6;
+      --text:      #1A1A2E;
+      --muted:     #64697A;
+      --danger:    #B53A2F;
+      --radius:    6px;
+      --mono:      'IBM Plex Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--navy-deep);
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border-bottom: 3px solid var(--gold);
+    }
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      color: #fff;
+      letter-spacing: 0.02em;
+    }
+    .logo-text span { color: var(--gold); }
+    .tagline {
+      font-size: 0.78rem;
+      color: #a0aec0;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 0.1rem;
+    }
+
+    /* ── LAYOUT ── */
+    main {
+      max-width: 860px;
+      margin: 2.5rem auto;
+      padding: 0 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem 2rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      color: var(--navy);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .step-badge {
+      background: var(--navy);
+      color: var(--gold);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.45rem;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── FORM ELEMENTS ── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    input[type="text"], input[type="email"] {
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: #fafbfc;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--navy);
+      background: #fff;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.4rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--navy); color: #fff; }
+    .btn-gold    { background: var(--gold); color: #fff; }
+    .btn-green   { background: var(--green); color: #fff; }
+
+    /* ── DROP ZONE ── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: #fafbfc;
+    }
+    #drop-zone.dragover {
+      border-color: var(--navy);
+      background: #f0f4ff;
+    }
+    #drop-zone .dz-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    #drop-zone p { color: var(--muted); font-size: 0.9rem; }
+    #drop-zone strong { color: var(--navy); }
+    #file-input { display: none; }
+    #file-name {
+      margin-top: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--green);
+      font-weight: 500;
+    }
+
+    /* ── RACE SELECTOR ── */
+    #race-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+    .race-btn {
+      background: #f4f6fa;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.6rem 0.5rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      font-family: 'Inter', sans-serif;
+    }
+    .race-btn:hover { border-color: var(--navy); background: #eef1f8; }
+    .race-btn.selected { border-color: var(--gold); background: #fff8ec; }
+    .race-btn .race-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      color: var(--navy);
+      font-weight: 700;
+    }
+    .race-btn .race-detail {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+
+    /* ── ANALYSIS OUTPUT ── */
+    #analysis-body {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      background: #f8f9fc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      min-height: 200px;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+
+    /* ── PULSE INDICATOR ── */
+    .pulse-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 0.75rem;
+    }
+    .pulse {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── ERROR / INFO MSGS ── */
+    .msg {
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius);
+      font-size: 0.85rem;
+      margin-top: 0.75rem;
+    }
+    .msg-error { background: #fef2f2; border: 1px solid #fca5a5; color: var(--danger); }
+    .msg-info  { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
+
+    /* ── EXPIRED SCREEN ── */
+    #expired-screen {
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+    #expired-screen h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--navy);
+      margin-bottom: 1rem;
+    }
+    #expired-screen p { color: var(--muted); margin-bottom: 1.5rem; }
+    #expired-screen a {
+      display: inline-block;
+      background: var(--gold);
+      color: #fff;
+      padding: 0.7rem 1.75rem;
+      border-radius: var(--radius);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    /* ── UTILITY ── */
+    .hidden { display: none !important; }
+    .mt1 { margin-top: 1rem; }
+    .actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; align-items: center; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-text">TrackIQ <span>AI</span></div>
+    <div class="tagline">Thoroughbred Handicapping Intelligence</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── EXPIRED SCREEN ── -->
+  <div id="expired-screen" class="card hidden">
+    <h2>Your Trial Has Ended</h2>
+    <p>Your 3-day free trial is complete. Contact us to continue accessing TrackIQ AI race analysis.</p>
+    <a href="mailto:mgoldberg@emarketingsg.com">Contact us to continue →</a>
+  </div>
+
+  <!-- ── STEP 1: CONTACT ── -->
+  <div id="step-contact" class="card">
+    <div class="card-title">
+      <span class="step-badge">01</span>
+      Your Information
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="inp-name">Name</label>
+        <input type="text" id="inp-name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label for="inp-email">Email</label>
+        <input type="email" id="inp-email" placeholder="you@example.com">
+      </div>
+    </div>
+    <div class="form-group mt1">
+      <label for="inp-company">Company / Organization (optional)</label>
+      <input type="text" id="inp-company" placeholder="Syndicate, stable, or independent">
+    </div>
+    <div id="err-contact" class="msg msg-error hidden"></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-contact">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: UPLOAD ── -->
+  <div id="step-upload" class="card hidden">
+    <div class="card-title">
+      <span class="step-badge">02</span>
+      Upload DRF File
+    </div>
+    <div id="drop-zone">
+      <div class="dz-icon">📂</div>
+      <p><strong>Drop your .DRF file here</strong> or click to browse</p>
+      <p style="margin-top:0.3rem;font-size:0.78rem;">Brisnet Single-File format (.DRF / .bris)</p>
+      <div id="file-name"></div>
+    </div>
+    <input type="file" id="file-input" accept=".DRF,.bris,.drf">
+    <div id="err-upload" class="msg msg-error hidden"></div>
+    <div class="actions">
+      <button class="btn btn-gold" id="btn-upload" disabled>Parse Races →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: RACE SELECT ── -->
+  <div id="step-races" class="card hidden">
+    <div class="card-title">
+      <span class="step-badge">03</span>
+      Select a Race
+    </div>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+      Choose a race to analyze. TrackIQ AI will review all starters, pace figures, and running styles.
+    </p>
+    <div id="race-grid"></div>
+    <div id="err-race" class="msg msg-error hidden"></div>
+    <div class="actions">
+      <button class="btn btn-green" id="btn-analyze" disabled>Run AI Analysis →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: ANALYSIS ── -->
+  <div id="step-analysis" class="card hidden">
+    <div class="card-title">
+      <span class="step-badge">04</span>
+      AI Handicapping Analysis
+    </div>
+    <div id="pulse-wrap" class="pulse-wrap hidden">
+      <div class="pulse"></div>
+      <span>Analyzing race data…</span>
+    </div>
+    <div id="analysis-body"></div>
+    <div id="err-analysis" class="msg msg-error hidden"></div>
+    <div class="actions mt1">
+      <button class="btn btn-primary" id="btn-reanalyze" style="display:none;">Re-run Analysis →</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── STATE ──────────────────────────────────────────────────────────────────
+  let uploadId    = null;
+  let selectedKey = null;
+  let races       = [];
+
+  // ── UTILS ─────────────────────────────────────────────────────────────────
+  function showEl(id)  { document.getElementById(id).classList.remove('hidden'); }
+  function hideEl(id)  { document.getElementById(id).classList.add('hidden'); }
+  function showErr(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+  function clearErr(id) { document.getElementById(id).classList.add('hidden'); }
+
+  // ── STEP 1: CONTACT ───────────────────────────────────────────────────────
+  document.getElementById('btn-contact').addEventListener('click', async () => {
+    clearErr('err-contact');
+    const name    = document.getElementById('inp-name').value.trim();
+    const email   = document.getElementById('inp-email').value.trim();
+    const company = document.getElementById('inp-company').value.trim();
+
+    if (!name || !email) {
+      showErr('err-contact', 'Please enter your name and email.'); return;
+    }
+    if (!email.includes('@')) {
+      showErr('err-contact', 'Please enter a valid email address.'); return;
+    }
+
+    const btn = document.getElementById('btn-contact');
+    btn.disabled = true; btn.textContent = 'Checking…';
+
+    try {
+      const res  = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, company })
+      });
+      const data = await res.json();
+
+      if (data.expired) {
+        hideEl('step-contact');
+        showEl('expired-screen');
+        return;
+      }
+      if (data.error) {
+        showErr('err-contact', data.error);
+        btn.disabled = false; btn.textContent = 'Continue →';
+        return;
+      }
+
+      // Store session
+      sessionStorage.setItem('brisai_name',  name);
+      sessionStorage.setItem('brisai_email', email);
+      sessionStorage.setItem('brisai_company', company);
+
+      hideEl('step-contact');
+      showEl('step-upload');
+    } catch (e) {
+      showErr('err-contact', 'Network error. Please try again.');
+      btn.disabled = false; btn.textContent = 'Continue →';
+    }
+  });
+
+  // ── STEP 2: FILE UPLOAD ───────────────────────────────────────────────────
+  const dropZone  = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const btnUpload = document.getElementById('btn-upload');
+  const fileLabel = document.getElementById('file-name');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; handleFileSelect(); }
+  });
+  fileInput.addEventListener('change', handleFileSelect);
+
+  function handleFileSelect() {
+    const f = fileInput.files[0];
+    if (!f) return;
+    fileLabel.textContent = '✓ ' + f.name;
+    btnUpload.disabled = false;
+    clearErr('err-upload');
+  }
+
+  btnUpload.addEventListener('click', async () => {
+    clearErr('err-upload');
+    const f = fileInput.files[0];
+    if (!f) { showErr('err-upload', 'Please select a DRF file.'); return; }
+
+    btnUpload.disabled = true; btnUpload.textContent = 'Parsing…';
+
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('email', sessionStorage.getItem('brisai_email') || '');
+
+    try {
+      const res  = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.error) {
+        showErr('err-upload', data.error);
+        btnUpload.disabled = false; btnUpload.textContent = 'Parse Races →';
+        return;
+      }
+
+      uploadId = data.upload_id;
+      races    = data.races;
+      buildRaceGrid(races);
+      hideEl('step-upload');
+      showEl('step-races');
+    } catch (e) {
+      showErr('err-upload', 'Upload failed. Please try again.');
+      btnUpload.disabled = false; btnUpload.textContent = 'Parse Races →';
+    }
+  });
+
+  // ── STEP 3: RACE GRID ─────────────────────────────────────────────────────
+  function buildRaceGrid(races) {
+    const grid = document.getElementById('race-grid');
+    grid.innerHTML = '';
+    races.forEach(r => {
+      const btn = document.createElement('button');
+      btn.className = 'race-btn';
+      btn.dataset.key = r.key;
+      btn.innerHTML = `
+        <div class="race-num">Race ${r.race_num}</div>
+        <div class="race-detail">${r.distance || ''} ${r.surface || ''}</div>
+        <div class="race-detail">${r.race_class || ''}</div>
+        <div class="race-detail">${r.num_horses || 0} starters</div>
+      `;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.race-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        selectedKey = r.key;
+        document.getElementById('btn-analyze').disabled = false;
+        clearErr('err-race');
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  // ── STEP 4: ANALYSIS ─────────────────────────────────────────────────────
+  document.getElementById('btn-analyze').addEventListener('click', runAnalysis);
+  document.getElementById('btn-reanalyze').addEventListener('click', runAnalysis);
+
+  function runAnalysis() {
+    if (!selectedKey || !uploadId) return;
+    clearErr('err-analysis');
+
+    const analysisBody = document.getElementById('analysis-body');
+    analysisBody.textContent = '';
+    showEl('step-analysis');
+    showEl('pulse-wrap');
+    document.getElementById('btn-reanalyze').style.display = 'none';
+    document.getElementById('btn-analyze').disabled = true;
+
+    document.getElementById('step-analysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedKey)}`;
+    const es  = new EventSource(url);
+
+    es.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.error) {
+        es.close();
+        hideEl('pulse-wrap');
+        showErr('err-analysis', msg.error);
+        document.getElementById('btn-analyze').disabled = false;
+        return;
+      }
+      if (msg.text) {
+        analysisBody.textContent += msg.text;
+        analysisBody.scrollTop = analysisBody.scrollHeight;
+      }
+      if (msg.done) {
+        es.close();
+        hideEl('pulse-wrap');
+        document.getElementById('btn-analyze').disabled = false;
+        document.getElementById('btn-reanalyze').style.display = 'inline-flex';
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      hideEl('pulse-wrap');
+      if (!analysisBody.textContent) {
+        showErr('err-analysis', 'Connection lost. Please try again.');
+      }
+      document.getElementById('btn-analyze').disabled = false;
+    };
+  }
+</script>
+</body>
+</html>
