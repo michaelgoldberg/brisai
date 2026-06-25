@@ -378,6 +378,29 @@
     </div>
   </div>
 
+  <!-- ── STEP 5: RESULTS UPLOAD ── -->
+  <div id="step-results" class="card hidden">
+    <div class="card-title">
+      <span class="step-badge">05</span>
+      Upload Results & Calculate ROI
+    </div>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+      After running analyses for the card, upload the Brisnet results chart to see how your picks performed and calculate ROI.
+    </p>
+    <div id="results-drop-zone" style="border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;background:#fafbfc;" onclick="document.getElementById('results-file-input').click()">
+      <div style="font-size:1.5rem;margin-bottom:0.5rem;">📋</div>
+      <p style="color:var(--muted);font-size:0.9rem;"><strong>Drop Brisnet results chart here</strong> or click to browse</p>
+      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem;">.txt or .pdf results file</p>
+      <div id="results-file-name" style="margin-top:0.75rem;font-family:var(--mono);font-size:0.8rem;color:var(--green);font-weight:500;"></div>
+    </div>
+    <input type="file" id="results-file-input" accept=".txt,.pdf,.TXT" style="display:none;">
+    <div id="err-results" class="msg msg-error hidden"></div>
+    <div class="actions">
+      <button class="btn btn-gold" id="btn-upload-results" disabled>Calculate ROI →</button>
+    </div>
+    <div id="roi-output" class="hidden" style="margin-top:1.5rem;overflow-x:auto;"></div>
+  </div>
+
 </main>
 
 <script>
@@ -532,51 +555,4 @@
 
   function runAnalysis() {
     if (!selectedKey || !uploadId) return;
-    clearErr('err-analysis');
-
-    const analysisBody = document.getElementById('analysis-body');
-    analysisBody.textContent = '';
-    showEl('step-analysis');
-    showEl('pulse-wrap');
-    document.getElementById('btn-reanalyze').style.display = 'none';
-    document.getElementById('btn-analyze').disabled = true;
-
-    document.getElementById('step-analysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedKey)}`;
-    const es  = new EventSource(url);
-
-    es.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-
-      if (msg.error) {
-        es.close();
-        hideEl('pulse-wrap');
-        showErr('err-analysis', msg.error);
-        document.getElementById('btn-analyze').disabled = false;
-        return;
-      }
-      if (msg.text) {
-        analysisBody.textContent += msg.text;
-        analysisBody.scrollTop = analysisBody.scrollHeight;
-      }
-      if (msg.done) {
-        es.close();
-        hideEl('pulse-wrap');
-        document.getElementById('btn-analyze').disabled = false;
-        document.getElementById('btn-reanalyze').style.display = 'inline-flex';
-      }
-    };
-
-    es.onerror = () => {
-      es.close();
-      hideEl('pulse-wrap');
-      if (!analysisBody.textContent) {
-        showErr('err-analysis', 'Connection lost. Please try again.');
-      }
-      document.getElementById('btn-analyze').disabled = false;
-    };
-  }
-</script>
-</body>
-</html>
+    clearErr('err-anal
