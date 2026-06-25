@@ -555,4 +555,172 @@
 
   function runAnalysis() {
     if (!selectedKey || !uploadId) return;
-    clearErr('err-anal
+    clearErr('err-analysis');
+
+    const analysisBody = document.getElementById('analysis-body');
+    analysisBody.textContent = '';
+    showEl('step-analysis');
+    showEl('pulse-wrap');
+    document.getElementById('btn-reanalyze').style.display = 'none';
+    document.getElementById('btn-analyze').disabled = true;
+
+    document.getElementById('step-analysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedKey)}`;
+    const es  = new EventSource(url);
+
+    es.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.error) {
+        es.close();
+        hideEl('pulse-wrap');
+        showErr('err-analysis', msg.error);
+        document.getElementById('btn-analyze').disabled = false;
+        return;
+      }
+      if (msg.text) {
+        analysisBody.textContent += msg.text;
+        analysisBody.scrollTop = analysisBody.scrollHeight;
+      }
+      if (msg.picks) {
+        // Picks extracted automatically — show results upload button
+        showEl('step-results');
+      }
+      if (msg.done) {
+        es.close();
+        hideEl('pulse-wrap');
+        document.getElementById('btn-analyze').disabled = false;
+        document.getElementById('btn-reanalyze').style.display = 'inline-flex';
+      }
+    };
+
+    es.onerror = () => {
+      es.close();
+      hideEl('pulse-wrap');
+      if (!analysisBody.textContent) {
+        showErr('err-analysis', 'Connection lost. Please try again.');
+      }
+      document.getElementById('btn-analyze').disabled = false;
+    };
+  }
+
+  // ── STEP 5: RESULTS UPLOAD ────────────────────────────────────────────
+  const resultsInput   = document.getElementById('results-file-input');
+  const resultsLabel   = document.getElementById('results-file-name');
+  const btnUploadRes   = document.getElementById('btn-upload-results');
+
+  resultsInput.addEventListener('change', () => {
+    if (resultsInput.files[0]) {
+      resultsLabel.textContent = '✓ ' + resultsInput.files[0].name;
+      btnUploadRes.disabled = false;
+    }
+  });
+
+  btnUploadRes.addEventListener('click', async () => {
+    const f = resultsInput.files[0];
+    if (!f) return;
+
+    btnUploadRes.disabled = true;
+    btnUploadRes.textContent = 'Processing...';
+    clearErr('err-results');
+
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('upload_id', uploadId);
+
+    try {
+      const res  = await fetch('/upload_results', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.error) {
+        showErr('err-results', data.error);
+        btnUploadRes.disabled = false;
+        btnUploadRes.textContent = 'Upload Results →';
+        return;
+      }
+
+      renderROI(data);
+    } catch (e) {
+      showErr('err-results', 'Upload failed. Please try again.');
+      btnUploadRes.disabled = false;
+      btnUploadRes.textContent = 'Upload Results →';
+    }
+  });
+
+  function renderROI(data) {
+    const container = document.getElementById('roi-output');
+    const card      = data.card_total;
+    const races     = data.races;
+
+    let html = `
+      <div class="roi-card-total ${card.roi >= 0 ? 'roi-pos' : 'roi-neg'}">
+        <div class="roi-stat"><span class="roi-label">Invested</span><span class="roi-val">$${card.invested.toFixed(2)}</span></div>
+        <div class="roi-stat"><span class="roi-label">Returned</span><span class="roi-val">$${card.returned.toFixed(2)}</span></div>
+        <div class="roi-stat"><span class="roi-label">Card ROI</span><span class="roi-val roi-big ${card.roi >= 0 ? 'pos' : 'neg'}">${card.roi > 0 ? '+' : ''}${card.roi}%</span></div>
+        <div class="roi-stat"><span class="roi-label">Races Tracked</span><span class="roi-val">${card.races_with_picks} of ${races.length}</span></div>
+      </div>
+      <table class="roi-table">
+        <thead>
+          <tr>
+            <th>Race</th><th>Win Pick</th><th>Place Pick</th><th>Winner</th><th>Place</th>
+            <th>Win</th><th>Place</th><th>Exacta</th><th>Return</th><th>ROI</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    for (const r of races) {
+      if (!r.picks_available) {
+        html += `<tr><td>${r.race_num}</td><td colspan="9" style="color:var(--muted);font-size:0.8rem;">No picks recorded</td></tr>`;
+        continue;
+      }
+      const roiClass = r.roi >= 0 ? 'pos' : 'neg';
+      html += `
+        <tr>
+          <td><strong>R${r.race_num}</strong></td>
+          <td>${r.win_pick}</td>
+          <td>${r.place_pick}</td>
+          <td>${r.winner}</td>
+          <td>${r.place}</td>
+          <td class="${r.win_hit ? 'hit' : 'miss'}">${r.win_hit ? '✓ $'+r.win_return.toFixed(2) : '✗'}</td>
+          <td class="${r.place_hit ? 'hit' : 'miss'}">${r.place_hit ? '✓ $'+r.place_return.toFixed(2) : '✗'}</td>
+          <td class="${r.exacta_hit ? 'hit' : 'miss'}">${r.exacta_hit ? '✓ $'+r.exacta_return.toFixed(2) : '✗'}</td>
+          <td>$${r.returned.toFixed(2)}</td>
+          <td class="${roiClass}">${r.roi > 0 ? '+' : ''}${r.roi}%</td>
+        </tr>`;
+    }
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+    showEl('roi-output');
+  }
+</script>
+
+<style>
+  /* ── RESULTS / ROI STYLES ── */
+  .roi-card-total {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .roi-pos { background: #f0fdf4; border: 1px solid #86efac; }
+  .roi-neg { background: #fef2f2; border: 1px solid #fca5a5; }
+  .roi-stat { display: flex; flex-direction: column; gap: 0.2rem; }
+  .roi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .roi-val { font-family: var(--mono); font-size: 1rem; font-weight: 600; color: var(--text); }
+  .roi-big { font-size: 1.4rem; }
+  .roi-val.pos { color: #16a34a; }
+  .roi-val.neg { color: var(--danger); }
+  .roi-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+  .roi-table th { padding: 0.5rem 0.75rem; text-align: left; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); }
+  .roi-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+  .roi-table .hit { color: #16a34a; font-weight: 600; }
+  .roi-table .miss { color: var(--muted); }
+  .roi-table .pos { color: #16a34a; font-weight: 600; }
+  .roi-table .neg { color: var(--danger); font-weight: 600; }
+</style>
+</body>
+</html>
