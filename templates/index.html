@@ -1,790 +1,466 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TrackIQ AI — Thoroughbred Handicapping Intelligence</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --navy:      #1B2B4B;
-      --navy-deep: #111C33;
-      --gold:      #C9952A;
-      --gold-lt:   #E8B84B;
-      --green:     #2D7A4F;
-      --page-bg:   #ECEEF2;
-      --card-bg:   #FFFFFF;
-      --border:    #D8DCE6;
-      --text:      #1A1A2E;
-      --muted:     #64697A;
-      --danger:    #B53A2F;
-      --radius:    6px;
-      --mono:      'IBM Plex Mono', monospace;
+"""
+app.py - TrackIQ AI Handicapping Trial App
+Flask backend: contact capture -> file upload -> race parse -> Claude AI (streamed)
+Results tracking: upload results chart -> match picks -> calculate ROI -> save to Airtable
+"""
+
+import os
+import json
+import uuid
+import re
+import tempfile
+import requests
+from datetime import datetime, timezone, timedelta
+from flask import Flask, render_template, request, jsonify, Response, session
+
+import anthropic
+from brisnet_parser import parse_brisnet_file, build_race_label, build_claude_prompt
+
+# CONFIG
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
+
+ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
+AIRTABLE_PAT       = os.environ.get("AIRTABLE_PAT", "")
+AIRTABLE_BASE_ID   = os.environ.get("AIRTABLE_BASE_ID", "")
+AIRTABLE_PROSPECTS = os.environ.get("AIRTABLE_PROSPECTS_TABLE", "Table 1")
+AIRTABLE_USAGE     = os.environ.get("AIRTABLE_USAGE_TABLE", "Table 2")
+AIRTABLE_RESULTS   = "Results"
+
+TRIAL_DAYS = int(os.environ.get("TRIAL_DAYS", "3"))
+MODEL      = "claude-sonnet-4-6"
+MAX_TOKENS = 2048
+
+race_store = {}
+pick_store = {}
+
+
+# ROUTES
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/register", methods=["POST"])
+def register():
+    data    = request.get_json() or {}
+    name    = data.get("name", "").strip()
+    email   = data.get("email", "").strip().lower()
+    company = data.get("company", "").strip()
+
+    if not name or not email:
+        return jsonify({"error": "Name and email are required."}), 400
+
+    today     = datetime.now(timezone.utc).date()
+    today_str = today.strftime("%Y-%m-%d")
+
+    existing = _airtable_find_prospect(email)
+
+    if existing:
+        fields = existing["fields"]
+        if fields.get("Blocked"):
+            return jsonify({"expired": True, "message": "Your access has been suspended."})
+        expires_str = fields.get("ExpiresAt", "")
+        if expires_str:
+            try:
+                expires_date = datetime.strptime(expires_str[:10], "%Y-%m-%d").date()
+                if today > expires_date:
+                    return jsonify({"expired": True, "message": f"Your {TRIAL_DAYS}-day trial has ended."})
+            except ValueError:
+                pass
+        _airtable_update_prospect(existing["id"], {
+            "LastAccess":  today_str,
+            "AccessCount": (fields.get("AccessCount") or 0) + 1,
+        })
+    else:
+        expires_date = today + timedelta(days=TRIAL_DAYS)
+        _airtable_create_prospect({
+            "Name":        name,
+            "Email":       email,
+            "Company":     company,
+            "FirstOpened": today_str,
+            "ExpiresAt":   expires_date.strftime("%Y-%m-%d"),
+            "LastAccess":  today_str,
+            "AccessCount": 1,
+        })
+
+    session["name"]    = name
+    session["email"]   = email
+    session["company"] = company
+    return jsonify({"ok": True})
+
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided."}), 400
+
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"error": "Empty filename."}), 400
+
+    suffix = os.path.splitext(f.filename)[1].lower() or ".drf"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        f.save(tmp.name)
+        tmp_path = tmp.name
+
+    try:
+        races = parse_brisnet_file(tmp_path)
+    except Exception as e:
+        return jsonify({"error": f"Could not parse file: {e}"}), 400
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+    if not races:
+        return jsonify({"error": "No races found in file."}), 400
+
+    upload_id = str(uuid.uuid4())
+    race_store[upload_id] = races
+
+    # Convert tuple keys to string keys for JSON compatibility
+    str_races = {}
+    for key, race in races.items():
+        str_key = f"{key[0]}|{key[1]}|{key[2]}" if isinstance(key, tuple) else str(key)
+        str_races[str_key] = race
+    race_store[upload_id] = str_races
+
+    race_list = []
+    for str_key, race in str_races.items():
+        horses = race.get("horses", [])
+        race_num = race.get("race_num", "?")
+        # Try to get race_num from key if not in race dict
+        if race_num == "?" and "|" in str_key:
+            race_num = str_key.split("|")[2]
+        race_list.append({
+            "key":        str_key,
+            "race_num":   race_num,
+            "distance":   race.get("distance", ""),
+            "surface":    race.get("surface", ""),
+            "race_class": race.get("race_class", ""),
+            "num_horses": len(horses),
+        })
+
+    race_list.sort(key=lambda r: int(str(r["race_num"])) if str(r["race_num"]).isdigit() else 0)
+    return jsonify({"upload_id": upload_id, "races": race_list})
+
+
+@app.route("/analyze")
+def analyze():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+
+    if upload_id not in race_store:
+        return Response(_err_stream("Session expired. Please re-upload your file."), mimetype="text/event-stream")
+
+    races = race_store[upload_id]
+    if race_key not in races:
+        return Response(_err_stream("Race not found."), mimetype="text/event-stream")
+
+    race     = races[race_key]
+    prompt   = build_claude_prompt(race)
+    email    = session.get("email", "unknown")
+    race_num = race.get("race_num", "")
+
+    _airtable_log_usage({
+        "Email":   email,
+        "Track":   race.get("track", ""),
+        "RaceNum": str(race_num),
+        "Date":    datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    })
+
+    full_analysis = []
+
+    def generate():
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        try:
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_TOKENS,
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                for text in stream.text_stream:
+                    full_analysis.append(text)
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+
+            # Extract picks from completed analysis
+            analysis_text = "".join(full_analysis)
+            win_pick, place_pick = _extract_picks(analysis_text)
+
+            if win_pick["pp"] and place_pick["pp"]:
+                if upload_id not in pick_store:
+                    pick_store[upload_id] = {}
+                pick_store[upload_id][str(race_num)] = {
+                    "win_pp":     win_pick["pp"],
+                    "win_name":   win_pick["name"],
+                    "win_odds":   win_pick["odds"],
+                    "place_pp":   place_pick["pp"],
+                    "place_name": place_pick["name"],
+                    "place_odds": place_pick["odds"],
+                }
+                yield f"data: {json.dumps({'picks': {'win': win_pick, 'place': place_pick}})}\n\n"
+
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream")
+
+
+@app.route("/upload_results", methods=["POST"])
+def upload_results():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided."}), 400
+
+    f         = request.files["file"]
+    text      = f.read().decode("utf-8", errors="ignore")
+    upload_id = request.form.get("upload_id", "")
+    email     = session.get("email", "unknown")
+
+    results = _parse_results(text)
+    if not results:
+        return jsonify({"error": "Could not parse results file."}), 400
+
+    picks         = pick_store.get(upload_id, {})
+    card_summary  = []
+    total_invested = 0.0
+    total_returned = 0.0
+
+    for race_num, race_result in sorted(results.items()):
+        pick    = picks.get(str(race_num), {})
+        win_pp  = pick.get("win_pp")
+        place_pp = pick.get("place_pp")
+
+        if not win_pp or not place_pp:
+            card_summary.append({
+                "race_num":        race_num,
+                "winner":          f"PP{race_result['winner_pp']} {race_result['winner_name']}",
+                "place":           f"PP{race_result['place_pp']} {race_result['place_name']}",
+                "picks_available": False,
+            })
+            continue
+
+        roi = _calculate_roi(race_result, win_pp, place_pp)
+        total_invested += roi["invested"]
+        total_returned += roi["returned"]
+
+        _airtable_save_result({
+            "Track":          race_result.get("track", ""),
+            "RaceDate":       race_result.get("date", ""),
+            "RaceNum":        race_num,
+            "WinPick":        pick.get("win_name", ""),
+            "WinPickPP":      win_pp,
+            "WinPickOdds":    pick.get("win_odds", ""),
+            "PlacePick":      pick.get("place_name", ""),
+            "PlacePickPP":    place_pp,
+            "PlacePickOdds":  pick.get("place_odds", ""),
+            "ActualWinner":   race_result.get("winner_name", ""),
+            "ActualPlace":    race_result.get("place_name", ""),
+            "WinBetResult":   "HIT" if roi["win_hit"] else "MISS",
+            "PlaceBetResult": "HIT" if roi["place_hit"] else "MISS",
+            "ExactaHit":      roi["exacta_hit"],
+            "WinPayout":      roi["win_return"],
+            "PlacePayout":    roi["place_return"],
+            "ExactaPayout":   roi["exacta_return"],
+            "RaceROI":        roi["roi"],
+            "Email":          email,
+        })
+
+        card_summary.append({
+            "race_num":     race_num,
+            "win_pick":     f"PP{win_pp} {pick.get('win_name', '')}",
+            "place_pick":   f"PP{place_pp} {pick.get('place_name', '')}",
+            "winner":       f"PP{race_result['winner_pp']} {race_result['winner_name']}",
+            "place":        f"PP{race_result['place_pp']} {race_result['place_name']}",
+            "win_hit":      roi["win_hit"],
+            "place_hit":    roi["place_hit"],
+            "exacta_hit":   roi["exacta_hit"],
+            "win_return":   roi["win_return"],
+            "place_return": roi["place_return"],
+            "exacta_return": roi["exacta_return"],
+            "invested":     roi["invested"],
+            "returned":     roi["returned"],
+            "roi":          roi["roi"],
+            "picks_available": True,
+        })
+
+    card_roi = round(((total_returned - total_invested) / total_invested * 100), 1) if total_invested > 0 else 0
+
+    return jsonify({
+        "ok": True,
+        "races": card_summary,
+        "card_total": {
+            "invested":          round(total_invested, 2),
+            "returned":          round(total_returned, 2),
+            "roi":               card_roi,
+            "races_with_picks":  sum(1 for r in card_summary if r.get("picks_available")),
+        }
+    })
+
+
+# RESULTS PARSING HELPERS
+
+def _parse_results(text):
+    races = {}
+    ordinal_map = {
+        'FIRST': 1, 'SECOND': 2, 'THIRD': 3, 'FOURTH': 4,
+        'FIFTH': 5, 'SIXTH': 6, 'SEVENTH': 7, 'EIGHTH': 8,
+        'NINTH': 9, 'TENTH': 10, 'ELEVENTH': 11, 'TWELFTH': 12
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--page-bg);
-      color: var(--text);
-      min-height: 100vh;
+    sections = re.split(r'(?=(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE)', text, flags=re.IGNORECASE)
+
+    for section in sections:
+        if not section.strip():
+            continue
+        m = re.match(r'(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE', section.strip(), re.IGNORECASE)
+        if not m:
+            continue
+        race_num = ordinal_map[m.group(1).upper()]
+
+        track_m = re.search(r'(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE\s+(.+?)\s+(\w+\s+\d+\w*,?\s+\d{4})', section, re.IGNORECASE)
+        track = track_m.group(1).strip() if track_m else ""
+        date  = track_m.group(2).strip() if track_m else ""
+
+        mutuel = re.findall(r'(\d+)-([A-Z][A-Z\s\']+?)\s+([\d.]+)(?:\s+([\d.]+))?(?:\s+([\d.]+))?\s*\.', section)
+        finish_order = []
+        horse_payoffs = {}
+
+        for i, match in enumerate(mutuel[:3]):
+            pp_num = int(match[0])
+            name   = match[1].strip()
+            finish_order.append(pp_num)
+            if i == 0:
+                horse_payoffs[pp_num] = {'win': float(match[2] or 0), 'place': float(match[3] or 0), 'name': name}
+            elif i == 1:
+                horse_payoffs[pp_num] = {'win': 0, 'place': float(match[2] or 0), 'name': name}
+            else:
+                horse_payoffs[pp_num] = {'win': 0, 'place': 0, 'name': name}
+
+        ex = re.search(r'EXACTOR\s*\((\d+)-(\d+)\)\s*PAID\s*\$([\d.]+)', section, re.IGNORECASE)
+
+        races[race_num] = {
+            'race_num':      race_num,
+            'track':         track,
+            'date':          date,
+            'finish_order':  finish_order,
+            'horse_payoffs': horse_payoffs,
+            'winner_pp':     finish_order[0] if finish_order else None,
+            'place_pp':      finish_order[1] if len(finish_order) > 1 else None,
+            'winner_name':   horse_payoffs.get(finish_order[0], {}).get('name', '') if finish_order else '',
+            'place_name':    horse_payoffs.get(finish_order[1], {}).get('name', '') if len(finish_order) > 1 else '',
+            'win_payout':    horse_payoffs.get(finish_order[0], {}).get('win', 0) if finish_order else 0,
+            'place_payout':  horse_payoffs.get(finish_order[0], {}).get('place', 0) if finish_order else 0,
+            'exacta_pp1':    int(ex.group(1)) if ex else None,
+            'exacta_pp2':    int(ex.group(2)) if ex else None,
+            'exacta_payout': float(ex.group(3)) if ex else 0.0,
+        }
+
+    return races
+
+
+def _calculate_roi(race_result, win_pick_pp, place_pick_pp):
+    invested  = 6.0
+    returned  = 0.0
+    winner_pp = race_result.get('winner_pp')
+    place_pp  = race_result.get('place_pp')
+
+    win_hit    = (win_pick_pp == winner_pp)
+    win_return = race_result.get('win_payout', 0) if win_hit else 0.0
+    returned  += win_return
+
+    place_hit = place_pick_pp in [winner_pp, place_pp]
+    if place_hit:
+        if place_pick_pp == winner_pp:
+            place_return = race_result.get('place_payout', 0)
+        else:
+            place_return = race_result.get('horse_payoffs', {}).get(place_pick_pp, {}).get('place', 0)
+    else:
+        place_return = 0.0
+    returned += place_return
+
+    exacta_hit    = (race_result.get('exacta_pp1') == win_pick_pp and race_result.get('exacta_pp2') == place_pick_pp)
+    exacta_return = race_result.get('exacta_payout', 0) * 2 if exacta_hit else 0.0
+    returned     += exacta_return
+
+    return {
+        'invested':      invested,
+        'returned':      returned,
+        'roi':           round(((returned - invested) / invested) * 100, 1),
+        'win_hit':       win_hit,
+        'win_return':    win_return,
+        'place_hit':     place_hit,
+        'place_return':  place_return,
+        'exacta_hit':    exacta_hit,
+        'exacta_return': exacta_return,
     }
 
-    /* ── HEADER ── */
-    header {
-      background: var(--navy-deep);
-      color: #fff;
-      padding: 1.25rem 2rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      border-bottom: 3px solid var(--gold);
-    }
-    .logo-text {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.6rem;
-      color: #fff;
-      letter-spacing: 0.02em;
-    }
-    .logo-text span { color: var(--gold); }
-    .tagline {
-      font-size: 0.78rem;
-      color: #a0aec0;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-top: 0.1rem;
-    }
 
-    /* ── LAYOUT ── */
-    main {
-      max-width: 860px;
-      margin: 2.5rem auto;
-      padding: 0 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.75rem;
-    }
-
-    /* ── CARDS ── */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem 2rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    }
-    .card-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.15rem;
-      color: var(--navy);
-      margin-bottom: 1.25rem;
-      padding-bottom: 0.6rem;
-      border-bottom: 2px solid var(--gold);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .step-badge {
-      background: var(--navy);
-      color: var(--gold);
-      font-family: var(--mono);
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 0.15rem 0.45rem;
-      border-radius: 3px;
-      letter-spacing: 0.05em;
-    }
-
-    /* ── FORM ELEMENTS ── */
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-    label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    input[type="text"], input[type="email"] {
-      padding: 0.55rem 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.95rem;
-      font-family: 'Inter', sans-serif;
-      color: var(--text);
-      background: #fafbfc;
-      transition: border-color 0.2s;
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--navy);
-      background: #fff;
-    }
-
-    /* ── BUTTONS ── */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.6rem 1.4rem;
-      border: none;
-      border-radius: var(--radius);
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.1s;
-    }
-    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-primary { background: var(--navy); color: #fff; }
-    .btn-gold    { background: var(--gold); color: #fff; }
-    .btn-green   { background: var(--green); color: #fff; }
-
-    /* ── DROP ZONE ── */
-    #drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 2.5rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      background: #fafbfc;
-    }
-    #drop-zone.dragover {
-      border-color: var(--navy);
-      background: #f0f4ff;
-    }
-    #drop-zone .dz-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    #drop-zone p { color: var(--muted); font-size: 0.9rem; }
-    #drop-zone strong { color: var(--navy); }
-    #file-input { display: none; }
-    #file-name {
-      margin-top: 0.75rem;
-      font-family: var(--mono);
-      font-size: 0.8rem;
-      color: var(--green);
-      font-weight: 500;
-    }
-
-    /* ── RACE SELECTOR ── */
-    #race-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 0.6rem;
-      margin-top: 0.5rem;
-    }
-    .race-btn {
-      background: #f4f6fa;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.6rem 0.5rem;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.15s;
-      font-family: 'Inter', sans-serif;
-    }
-    .race-btn:hover { border-color: var(--navy); background: #eef1f8; }
-    .race-btn.selected { border-color: var(--gold); background: #fff8ec; }
-    .race-btn .race-num {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.1rem;
-      color: var(--navy);
-      font-weight: 700;
-    }
-    .race-btn .race-detail {
-      font-size: 0.7rem;
-      color: var(--muted);
-      margin-top: 0.15rem;
-      line-height: 1.3;
-    }
-
-    /* ── ANALYSIS OUTPUT ── */
-    #analysis-body {
-      font-family: var(--mono);
-      font-size: 0.82rem;
-      line-height: 1.7;
-      color: var(--text);
-      white-space: pre-wrap;
-      background: #f8f9fc;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      min-height: 200px;
-      max-height: 520px;
-      overflow-y: auto;
-    }
-
-    /* ── PULSE INDICATOR ── */
-    .pulse-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: var(--muted);
-      font-size: 0.82rem;
-      margin-bottom: 0.75rem;
-    }
-    .pulse {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--gold);
-      animation: pulse 1s ease-in-out infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.7); }
-    }
-
-    /* ── ERROR / INFO MSGS ── */
-    .msg {
-      padding: 0.65rem 1rem;
-      border-radius: var(--radius);
-      font-size: 0.85rem;
-      margin-top: 0.75rem;
-    }
-    .msg-error { background: #fef2f2; border: 1px solid #fca5a5; color: var(--danger); }
-    .msg-info  { background: #eff6ff; border: 1px solid #93c5fd; color: #1d4ed8; }
-
-    /* ── EXPIRED SCREEN ── */
-    #expired-screen {
-      text-align: center;
-      padding: 3rem 2rem;
-    }
-    #expired-screen h2 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.5rem;
-      color: var(--navy);
-      margin-bottom: 1rem;
-    }
-    #expired-screen p { color: var(--muted); margin-bottom: 1.5rem; }
-    #expired-screen a {
-      display: inline-block;
-      background: var(--gold);
-      color: #fff;
-      padding: 0.7rem 1.75rem;
-      border-radius: var(--radius);
-      font-weight: 700;
-      text-decoration: none;
-      font-size: 0.95rem;
-    }
-
-    /* ── UTILITY ── */
-    .hidden { display: none !important; }
-    .mt1 { margin-top: 1rem; }
-    .actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; align-items: center; }
-  </style>
-</head>
-<body>
-
-<header>
-  <div>
-    <div class="logo-text">TrackIQ <span>AI</span></div>
-    <div class="tagline">Thoroughbred Handicapping Intelligence</div>
-  </div>
-</header>
-
-<main>
-
-  <!-- ── EXPIRED SCREEN ── -->
-  <div id="expired-screen" class="card hidden">
-    <h2>Your Trial Has Ended</h2>
-    <p>Your 3-day free trial is complete. Contact us to continue accessing TrackIQ AI race analysis.</p>
-    <a href="mailto:mgoldberg@emarketingsg.com">Contact us to continue →</a>
-  </div>
-
-  <!-- ── STEP 1: CONTACT ── -->
-  <div id="step-contact" class="card">
-    <div class="card-title">
-      <span class="step-badge">01</span>
-      Your Information
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label for="inp-name">Name</label>
-        <input type="text" id="inp-name" placeholder="Full name">
-      </div>
-      <div class="form-group">
-        <label for="inp-email">Email</label>
-        <input type="email" id="inp-email" placeholder="you@example.com">
-      </div>
-    </div>
-    <div class="form-group mt1">
-      <label for="inp-company">Company / Organization (optional)</label>
-      <input type="text" id="inp-company" placeholder="Syndicate, stable, or independent">
-    </div>
-    <div id="err-contact" class="msg msg-error hidden"></div>
-    <div class="actions">
-      <button class="btn btn-primary" id="btn-contact">Continue →</button>
-    </div>
-  </div>
-
-  <!-- ── WELCOME / QUICK START ── -->
-  <div id="step-welcome" class="card hidden">
-    <div class="card-title">
-      <span class="step-badge">👋</span>
-      Welcome to TrackIQ AI
-    </div>
-    <p style="font-size:0.95rem;color:var(--text);margin-bottom:1.5rem;line-height:1.75;">
-      TrackIQ AI analyzes your Brisnet past performance data using AI to deliver pace scenarios, speed figure breakdowns, class analysis, and top selections — in seconds. Here's how to get your first race card ready:
-    </p>
-
-    <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.75rem;">
-
-      <div style="display:flex;gap:1rem;align-items:flex-start;">
-        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">1</div>
-        <div>
-          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Sign in to Brisnet</div>
-          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <a href="https://www.brisnet.com" target="_blank" style="color:var(--gold);text-decoration:none;">brisnet.com</a> and sign in or create a free account.</div>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:1rem;align-items:flex-start;">
-        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">2</div>
-        <div>
-          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Purchase Premium Past Performances</div>
-          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <strong>PPs</strong> and purchase <strong>PP Data Files (Single)</strong> for the track and date you want to analyze.</div>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:1rem;align-items:flex-start;">
-        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">3</div>
-        <div>
-          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Download your DRF file</div>
-          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <strong>My Products</strong> and download the file you purchased. Save it somewhere easy to find on your computer.</div>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:1rem;align-items:flex-start;">
-        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">4</div>
-        <div>
-          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Upload your file to TrackIQ AI</div>
-          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Click <strong>Continue</strong> below to go to the upload page, then drag your DRF file onto the upload area or click to browse for it.</div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-primary" id="btn-welcome">Continue to Upload →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 2: UPLOAD ── -->
-  <div id="step-upload" class="card hidden">
-    <div class="card-title">
-      <span class="step-badge">02</span>
-      Upload DRF File
-    </div>
-    <div id="drop-zone">
-      <div class="dz-icon">📂</div>
-      <p><strong>Drop your .DRF file here</strong> or click to browse</p>
-      <p style="margin-top:0.3rem;font-size:0.78rem;">Brisnet PP Data Files (Single)</p>
-      <div id="file-name"></div>
-    </div>
-    <input type="file" id="file-input" accept=".DRF,.bris,.drf,.pdf,.PDF">
-    <div id="err-upload" class="msg msg-error hidden"></div>
-    <div class="actions">
-      <button class="btn btn-gold" id="btn-upload" disabled>Parse Races →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 3: RACE SELECT ── -->
-  <div id="step-races" class="card hidden">
-    <div class="card-title">
-      <span class="step-badge">03</span>
-      Select a Race
-    </div>
-    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
-      Choose a race to analyze. TrackIQ AI will review all starters, pace figures, and running styles.
-    </p>
-    <div id="race-grid"></div>
-    <div id="err-race" class="msg msg-error hidden"></div>
-    <div class="actions">
-      <button class="btn btn-green" id="btn-analyze" disabled>Run AI Analysis →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 4: ANALYSIS ── -->
-  <div id="step-analysis" class="card hidden">
-    <div class="card-title">
-      <span class="step-badge">04</span>
-      AI Handicapping Analysis
-    </div>
-    <div id="pulse-wrap" class="pulse-wrap hidden">
-      <div class="pulse"></div>
-      <span>Analyzing race data…</span>
-    </div>
-    <div id="analysis-body"></div>
-    <div id="err-analysis" class="msg msg-error hidden"></div>
-    <div class="actions mt1">
-      <button class="btn btn-primary" id="btn-reanalyze" style="display:none;">Re-run Analysis →</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 5: RESULTS UPLOAD ── -->
-  <div id="step-results" class="card hidden">
-    <div class="card-title">
-      <span class="step-badge">05</span>
-      Upload Results & Calculate ROI
-    </div>
-    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
-      After running analyses for the card, upload the Brisnet results chart to see how your picks performed and calculate ROI.
-    </p>
-    <div id="results-drop-zone" style="border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;background:#fafbfc;" onclick="document.getElementById('results-file-input').click()">
-      <div style="font-size:1.5rem;margin-bottom:0.5rem;">📋</div>
-      <p style="color:var(--muted);font-size:0.9rem;"><strong>Drop Brisnet results chart here</strong> or click to browse</p>
-      <p style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem;">.txt or .pdf results file</p>
-      <div id="results-file-name" style="margin-top:0.75rem;font-family:var(--mono);font-size:0.8rem;color:var(--green);font-weight:500;"></div>
-    </div>
-    <input type="file" id="results-file-input" accept=".txt,.pdf,.TXT" style="display:none;">
-    <div id="err-results" class="msg msg-error hidden"></div>
-    <div class="actions">
-      <button class="btn btn-gold" id="btn-upload-results" disabled>Calculate ROI →</button>
-    </div>
-    <div id="roi-output" class="hidden" style="margin-top:1.5rem;overflow-x:auto;"></div>
-  </div>
-
-</main>
-
-<script>
-  // ── STATE ──────────────────────────────────────────────────────────────────
-  let uploadId    = null;
-  let selectedKey = null;
-  let races       = [];
-
-  // ── UTILS ─────────────────────────────────────────────────────────────────
-  function showEl(id)  { document.getElementById(id).classList.remove('hidden'); }
-  function hideEl(id)  { document.getElementById(id).classList.add('hidden'); }
-  function showErr(id, msg) {
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.classList.remove('hidden');
-  }
-  function clearErr(id) { document.getElementById(id).classList.add('hidden'); }
-
-  // ── STEP 1: CONTACT ───────────────────────────────────────────────────────
-  document.getElementById('btn-contact').addEventListener('click', async () => {
-    clearErr('err-contact');
-    const name    = document.getElementById('inp-name').value.trim();
-    const email   = document.getElementById('inp-email').value.trim();
-    const company = document.getElementById('inp-company').value.trim();
-
-    if (!name || !email) {
-      showErr('err-contact', 'Please enter your name and email.'); return;
-    }
-    if (!email.includes('@')) {
-      showErr('err-contact', 'Please enter a valid email address.'); return;
-    }
-
-    const btn = document.getElementById('btn-contact');
-    btn.disabled = true; btn.textContent = 'Checking…';
-
-    try {
-      const res  = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, company })
-      });
-      const data = await res.json();
-
-      if (data.expired) {
-        hideEl('step-contact');
-        showEl('expired-screen');
-        return;
-      }
-      if (data.error) {
-        showErr('err-contact', data.error);
-        btn.disabled = false; btn.textContent = 'Continue →';
-        return;
-      }
-
-      // Store session
-      sessionStorage.setItem('brisai_name',  name);
-      sessionStorage.setItem('brisai_email', email);
-      sessionStorage.setItem('brisai_company', company);
-
-      hideEl('step-contact');
-      showEl('step-welcome');
-    } catch (e) {
-      showErr('err-contact', 'Network error. Please try again.');
-      btn.disabled = false; btn.textContent = 'Continue →';
-    }
-  });
-
-  // ── WELCOME ───────────────────────────────────────────────────────────────
-  document.getElementById('btn-welcome').addEventListener('click', () => {
-    hideEl('step-welcome');
-    showEl('step-upload');
-  });
-
-  // ── STEP 2: FILE UPLOAD ───────────────────────────────────────────────────
-  const dropZone  = document.getElementById('drop-zone');
-  const fileInput = document.getElementById('file-input');
-  const btnUpload = document.getElementById('btn-upload');
-  const fileLabel = document.getElementById('file-name');
-  let droppedFile = null;
-
-  dropZone.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) {
-      droppedFile = e.dataTransfer.files[0];
-      fileLabel.textContent = '✓ ' + droppedFile.name;
-      btnUpload.disabled = false;
-      clearErr('err-upload');
-    }
-  });
-  fileInput.addEventListener('change', handleFileSelect);
-
-  function handleFileSelect() {
-    droppedFile = null;
-    const f = fileInput.files[0];
-    if (!f) return;
-    fileLabel.textContent = '✓ ' + f.name;
-    btnUpload.disabled = false;
-    clearErr('err-upload');
-  }
-
-  btnUpload.addEventListener('click', async () => {
-    clearErr('err-upload');
-    const f = droppedFile || fileInput.files[0];
-    if (!f) { showErr('err-upload', 'Please select a DRF file.'); return; }
-
-    btnUpload.disabled = true; btnUpload.textContent = 'Parsing…';
-
-    const formData = new FormData();
-    formData.append('file', f);
-    formData.append('email', sessionStorage.getItem('brisai_email') || '');
-
-    try {
-      const res  = await fetch('/upload', { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (data.error) {
-        showErr('err-upload', data.error);
-        btnUpload.disabled = false; btnUpload.textContent = 'Parse Races →';
-        return;
-      }
-
-      uploadId = data.upload_id;
-      races    = data.races;
-      buildRaceGrid(races);
-      hideEl('step-upload');
-      showEl('step-races');
-    } catch (e) {
-      showErr('err-upload', 'Upload failed. Please try again.');
-      btnUpload.disabled = false; btnUpload.textContent = 'Parse Races →';
-    }
-  });
-
-  // ── STEP 3: RACE GRID ─────────────────────────────────────────────────────
-  function buildRaceGrid(races) {
-    const grid = document.getElementById('race-grid');
-    grid.innerHTML = '';
-    races.forEach(r => {
-      const btn = document.createElement('button');
-      btn.className = 'race-btn';
-      btn.dataset.key = r.key;
-      btn.innerHTML = `
-        <div class="race-num">Race ${r.race_num}</div>
-        <div class="race-detail">${r.distance || ''} ${r.surface || ''}</div>
-        <div class="race-detail">${r.race_class || ''}</div>
-        <div class="race-detail">${r.num_horses || 0} starters</div>
-      `;
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.race-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        selectedKey = r.key;
-        document.getElementById('btn-analyze').disabled = false;
-        clearErr('err-race');
-      });
-      grid.appendChild(btn);
-    });
-  }
-
-  // ── STEP 4: ANALYSIS ─────────────────────────────────────────────────────
-  document.getElementById('btn-analyze').addEventListener('click', runAnalysis);
-  document.getElementById('btn-reanalyze').addEventListener('click', runAnalysis);
-
-  function runAnalysis() {
-    if (!selectedKey || !uploadId) return;
-    clearErr('err-analysis');
-
-    const analysisBody = document.getElementById('analysis-body');
-    analysisBody.textContent = '';
-    showEl('step-analysis');
-    showEl('pulse-wrap');
-    document.getElementById('btn-reanalyze').style.display = 'none';
-    document.getElementById('btn-analyze').disabled = true;
-
-    document.getElementById('step-analysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(selectedKey)}`;
-    const es  = new EventSource(url);
-
-    es.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-
-      if (msg.error) {
-        es.close();
-        hideEl('pulse-wrap');
-        showErr('err-analysis', msg.error);
-        document.getElementById('btn-analyze').disabled = false;
-        return;
-      }
-      if (msg.text) {
-        analysisBody.textContent += msg.text;
-        analysisBody.scrollTop = analysisBody.scrollHeight;
-      }
-      if (msg.picks) {
-        // Picks extracted automatically — show results upload button
-        showEl('step-results');
-      }
-      if (msg.done) {
-        es.close();
-        hideEl('pulse-wrap');
-        document.getElementById('btn-analyze').disabled = false;
-        document.getElementById('btn-reanalyze').style.display = 'inline-flex';
-      }
-    };
-
-    es.onerror = () => {
-      es.close();
-      hideEl('pulse-wrap');
-      if (!analysisBody.textContent) {
-        showErr('err-analysis', 'Connection lost. Please try again.');
-      }
-      document.getElementById('btn-analyze').disabled = false;
-    };
-  }
-
-  // ── STEP 5: RESULTS UPLOAD ────────────────────────────────────────────
-  const resultsInput   = document.getElementById('results-file-input');
-  const resultsLabel   = document.getElementById('results-file-name');
-  const btnUploadRes   = document.getElementById('btn-upload-results');
-
-  resultsInput.addEventListener('change', () => {
-    if (resultsInput.files[0]) {
-      resultsLabel.textContent = '✓ ' + resultsInput.files[0].name;
-      btnUploadRes.disabled = false;
-    }
-  });
-
-  btnUploadRes.addEventListener('click', async () => {
-    const f = resultsInput.files[0];
-    if (!f) return;
-
-    btnUploadRes.disabled = true;
-    btnUploadRes.textContent = 'Processing...';
-    clearErr('err-results');
-
-    const formData = new FormData();
-    formData.append('file', f);
-    formData.append('upload_id', uploadId);
-
-    try {
-      const res  = await fetch('/upload_results', { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (data.error) {
-        showErr('err-results', data.error);
-        btnUploadRes.disabled = false;
-        btnUploadRes.textContent = 'Upload Results →';
-        return;
-      }
-
-      renderROI(data);
-    } catch (e) {
-      showErr('err-results', 'Upload failed. Please try again.');
-      btnUploadRes.disabled = false;
-      btnUploadRes.textContent = 'Upload Results →';
-    }
-  });
-
-  function renderROI(data) {
-    const container = document.getElementById('roi-output');
-    const card      = data.card_total;
-    const races     = data.races;
-
-    let html = `
-      <div class="roi-card-total ${card.roi >= 0 ? 'roi-pos' : 'roi-neg'}">
-        <div class="roi-stat"><span class="roi-label">Invested</span><span class="roi-val">$${card.invested.toFixed(2)}</span></div>
-        <div class="roi-stat"><span class="roi-label">Returned</span><span class="roi-val">$${card.returned.toFixed(2)}</span></div>
-        <div class="roi-stat"><span class="roi-label">Card ROI</span><span class="roi-val roi-big ${card.roi >= 0 ? 'pos' : 'neg'}">${card.roi > 0 ? '+' : ''}${card.roi}%</span></div>
-        <div class="roi-stat"><span class="roi-label">Races Tracked</span><span class="roi-val">${card.races_with_picks} of ${races.length}</span></div>
-      </div>
-      <table class="roi-table">
-        <thead>
-          <tr>
-            <th>Race</th><th>Win Pick</th><th>Place Pick</th><th>Winner</th><th>Place</th>
-            <th>Win</th><th>Place</th><th>Exacta</th><th>Return</th><th>ROI</th>
-          </tr>
-        </thead>
-        <tbody>`;
-
-    for (const r of races) {
-      if (!r.picks_available) {
-        html += `<tr><td>${r.race_num}</td><td colspan="9" style="color:var(--muted);font-size:0.8rem;">No picks recorded</td></tr>`;
-        continue;
-      }
-      const roiClass = r.roi >= 0 ? 'pos' : 'neg';
-      html += `
-        <tr>
-          <td><strong>R${r.race_num}</strong></td>
-          <td>${r.win_pick}</td>
-          <td>${r.place_pick}</td>
-          <td>${r.winner}</td>
-          <td>${r.place}</td>
-          <td class="${r.win_hit ? 'hit' : 'miss'}">${r.win_hit ? '✓ $'+r.win_return.toFixed(2) : '✗'}</td>
-          <td class="${r.place_hit ? 'hit' : 'miss'}">${r.place_hit ? '✓ $'+r.place_return.toFixed(2) : '✗'}</td>
-          <td class="${r.exacta_hit ? 'hit' : 'miss'}">${r.exacta_hit ? '✓ $'+r.exacta_return.toFixed(2) : '✗'}</td>
-          <td>$${r.returned.toFixed(2)}</td>
-          <td class="${roiClass}">${r.roi > 0 ? '+' : ''}${r.roi}%</td>
-        </tr>`;
-    }
-
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-    showEl('roi-output');
-  }
-</script>
-
-<style>
-  /* ── RESULTS / ROI STYLES ── */
-  .roi-card-total {
-    display: flex;
-    gap: 1.5rem;
-    padding: 1.25rem 1.5rem;
-    border-radius: var(--radius);
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-  }
-  .roi-pos { background: #f0fdf4; border: 1px solid #86efac; }
-  .roi-neg { background: #fef2f2; border: 1px solid #fca5a5; }
-  .roi-stat { display: flex; flex-direction: column; gap: 0.2rem; }
-  .roi-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .roi-val { font-family: var(--mono); font-size: 1rem; font-weight: 600; color: var(--text); }
-  .roi-big { font-size: 1.4rem; }
-  .roi-val.pos { color: #16a34a; }
-  .roi-val.neg { color: var(--danger); }
-  .roi-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
-  .roi-table th { padding: 0.5rem 0.75rem; text-align: left; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); }
-  .roi-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); font-family: var(--mono); }
-  .roi-table .hit { color: #16a34a; font-weight: 600; }
-  .roi-table .miss { color: var(--muted); }
-  .roi-table .pos { color: #16a34a; font-weight: 600; }
-  .roi-table .neg { color: var(--danger); font-weight: 600; }
-</style>
-</body>
-</html>
+def _extract_picks(analysis_text):
+    win_pick   = {'pp': None, 'name': '', 'odds': ''}
+    place_pick = {'pp': None, 'name': '', 'odds': ''}
+
+    win_m = re.search(r'WIN PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)', analysis_text, re.IGNORECASE | re.DOTALL)
+    if win_m:
+        win_pick = {'pp': int(win_m.group(1)), 'name': win_m.group(2).strip(), 'odds': win_m.group(3).strip()}
+
+    place_m = re.search(r'PLACE PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)', analysis_text, re.IGNORECASE | re.DOTALL)
+    if place_m:
+        place_pick = {'pp': int(place_m.group(1)), 'name': place_m.group(2).strip(), 'odds': place_m.group(3).strip()}
+
+    return win_pick, place_pick
+
+
+# AIRTABLE HELPERS
+
+def _at_headers():
+    return {"Authorization": f"Bearer {AIRTABLE_PAT}", "Content-Type": "application/json"}
+
+def _airtable_find_prospect(email):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}"
+    try:
+        r = requests.get(url, headers=_at_headers(), params={"filterByFormula": f"LOWER({{Email}})='{email}'"}, timeout=10)
+        records = r.json().get("records", [])
+        return records[0] if records else None
+    except Exception:
+        return None
+
+def _airtable_create_prospect(fields):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}"
+    try:
+        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
+    except Exception:
+        pass
+
+def _airtable_update_prospect(record_id, fields):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}/{record_id}"
+    try:
+        requests.patch(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
+    except Exception:
+        pass
+
+def _airtable_log_usage(fields):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_USAGE}"
+    try:
+        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
+    except Exception:
+        pass
+
+def _airtable_save_result(fields):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_RESULTS}"
+    try:
+        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
+    except Exception:
+        pass
+
+def _err_stream(msg):
+    yield f"data: {json.dumps({'error': msg})}\n\n"
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
