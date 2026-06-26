@@ -122,12 +122,23 @@ def upload():
     upload_id = str(uuid.uuid4())
     race_store[upload_id] = races
 
-    race_list = []
+    # Convert tuple keys to string keys for JSON compatibility
+    str_races = {}
     for key, race in races.items():
+        str_key = f"{key[0]}|{key[1]}|{key[2]}" if isinstance(key, tuple) else str(key)
+        str_races[str_key] = race
+    race_store[upload_id] = str_races
+
+    race_list = []
+    for str_key, race in str_races.items():
         horses = race.get("horses", [])
+        race_num = race.get("race_num", "?")
+        # Try to get race_num from key if not in race dict
+        if race_num == "?" and "|" in str_key:
+            race_num = str_key.split("|")[2]
         race_list.append({
-            "key":        key,
-            "race_num":   race.get("race_num", "?"),
+            "key":        str_key,
+            "race_num":   race_num,
             "distance":   race.get("distance", ""),
             "surface":    race.get("surface", ""),
             "race_class": race.get("race_class", ""),
