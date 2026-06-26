@@ -530,6 +530,7 @@
   const fileInput = document.getElementById('file-input');
   const btnUpload = document.getElementById('btn-upload');
   const fileLabel = document.getElementById('file-name');
+  let droppedFile = null;
 
   dropZone.addEventListener('click', () => fileInput.click());
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -545,8 +546,6 @@
     }
   });
   fileInput.addEventListener('change', handleFileSelect);
-
-  let droppedFile = null;
 
   function handleFileSelect() {
     droppedFile = null;
