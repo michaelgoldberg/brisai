@@ -537,11 +537,19 @@
   dropZone.addEventListener('drop', e => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; handleFileSelect(); }
+    if (e.dataTransfer.files[0]) {
+      droppedFile = e.dataTransfer.files[0];
+      fileLabel.textContent = '✓ ' + droppedFile.name;
+      btnUpload.disabled = false;
+      clearErr('err-upload');
+    }
   });
   fileInput.addEventListener('change', handleFileSelect);
 
+  let droppedFile = null;
+
   function handleFileSelect() {
+    droppedFile = null;
     const f = fileInput.files[0];
     if (!f) return;
     fileLabel.textContent = '✓ ' + f.name;
@@ -551,7 +559,7 @@
 
   btnUpload.addEventListener('click', async () => {
     clearErr('err-upload');
-    const f = fileInput.files[0];
+    const f = droppedFile || fileInput.files[0];
     if (!f) { showErr('err-upload', 'Please select a DRF file.'); return; }
 
     btnUpload.disabled = true; btnUpload.textContent = 'Parsing…';
