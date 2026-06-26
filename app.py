@@ -1,6 +1,5 @@
 """
 app.py - TrackIQ AI Handicapping Trial App
-
 """
 
 import os
@@ -112,7 +111,6 @@ def upload():
 
     upload_id = str(uuid.uuid4())
 
-    # Convert tuple keys to strings for JSON compatibility
     str_races = {}
     for key, race in races.items():
         if isinstance(key, tuple):
@@ -188,7 +186,7 @@ def _at_headers():
 def _airtable_find_prospect(email):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}"
     try:
-        r = requests.get(url, headers=_at_headers(), params={"filterByFormula": f"LOWER({{Email}})='{email}'"}, timeout=10)
+        r = requests.get(url, headers=_at_headers(), params={"filterByFormula": f"LOWER({{Email}})=\'{email}\'"}, timeout=10)
         records = r.json().get("records", [])
         return records[0] if records else None
     except Exception:
