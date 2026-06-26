@@ -1,466 +1,1146 @@
-"""
-app.py - TrackIQ AI Handicapping Trial App
-Flask backend: contact capture -> file upload -> race parse -> Claude AI (streamed)
-Results tracking: upload results chart -> match picks -> calculate ROI -> save to Airtable
-"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrackIQ — Intelligent Handicapping</title>
+<style>
+  :root {
+    --navy:   #0d1b2a;
+    --gold:   #c9a84c;
+    --gold2:  #e8c96a;
+    --slate:  #1e2d40;
+    --slate2: #243447;
+    --text:   #d4c9b0;
+    --muted:  #7a8fa6;
+    --green:  #3dba7e;
+    --red:    #e05555;
+    --border: #2a3d52;
+    --radius: 6px;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
 
-import os
-import json
-import uuid
-import re
-import tempfile
-import requests
-from datetime import datetime, timezone, timedelta
-from flask import Flask, render_template, request, jsonify, Response, session
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-import anthropic
-from brisnet_parser import parse_brisnet_file, build_race_label, build_claude_prompt
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+  }
 
-# CONFIG
+  /* ── GATE ─────────────────────────────────────────────────────── */
+  #gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-in-production")
+  .gate-card {
+    background: var(--slate);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2.5rem 3rem;
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+  }
 
-ANTHROPIC_API_KEY  = os.environ.get("ANTHROPIC_API_KEY", "")
-AIRTABLE_PAT       = os.environ.get("AIRTABLE_PAT", "")
-AIRTABLE_BASE_ID   = os.environ.get("AIRTABLE_BASE_ID", "")
-AIRTABLE_PROSPECTS = os.environ.get("AIRTABLE_PROSPECTS_TABLE", "Table 1")
-AIRTABLE_USAGE     = os.environ.get("AIRTABLE_USAGE_TABLE", "Table 2")
-AIRTABLE_RESULTS   = "Results"
+  .logo-title {
+    font-size: 2.4rem;
+    font-weight: bold;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    font-family: Georgia, serif;
+  }
 
-TRIAL_DAYS = int(os.environ.get("TRIAL_DAYS", "3"))
-MODEL      = "claude-sonnet-4-6"
-MAX_TOKENS = 2048
+  .logo-sub {
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.2rem;
+    margin-bottom: 1.8rem;
+  }
 
-race_store = {}
-pick_store = {}
+  .gate-headline {
+    font-size: 1.25rem;
+    color: var(--gold2);
+    margin-bottom: 0.4rem;
+  }
 
+  .gate-sub {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+  }
 
-# ROUTES
+  .gate-fine {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+  .gate-bullets {
+    display: flex;
+    justify-content: center;
+    gap: 1.2rem;
+    font-size: 0.78rem;
+    color: var(--gold);
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+  }
 
+  .gate-trust {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 1.8rem;
+    line-height: 1.5;
+  }
 
-@app.route("/register", methods=["POST"])
-def register():
-    data    = request.get_json() or {}
-    name    = data.get("name", "").strip()
-    email   = data.get("email", "").strip().lower()
-    company = data.get("company", "").strip()
+  .gate-trust em { color: var(--text); font-style: normal; }
 
-    if not name or not email:
-        return jsonify({"error": "Name and email are required."}), 400
+  .field-label {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: left;
+    margin-bottom: 0.3rem;
+    margin-top: 1rem;
+  }
 
-    today     = datetime.now(timezone.utc).date()
-    today_str = today.strftime("%Y-%m-%d")
+  input[type="text"],
+  input[type="email"] {
+    width: 100%;
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.95rem;
+    padding: 0.6rem 0.85rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
 
-    existing = _airtable_find_prospect(email)
+  input[type="text"]:focus,
+  input[type="email"]:focus {
+    border-color: var(--gold);
+  }
 
-    if existing:
-        fields = existing["fields"]
-        if fields.get("Blocked"):
-            return jsonify({"expired": True, "message": "Your access has been suspended."})
-        expires_str = fields.get("ExpiresAt", "")
-        if expires_str:
-            try:
-                expires_date = datetime.strptime(expires_str[:10], "%Y-%m-%d").date()
-                if today > expires_date:
-                    return jsonify({"expired": True, "message": f"Your {TRIAL_DAYS}-day trial has ended."})
-            except ValueError:
-                pass
-        _airtable_update_prospect(existing["id"], {
-            "LastAccess":  today_str,
-            "AccessCount": (fields.get("AccessCount") or 0) + 1,
-        })
-    else:
-        expires_date = today + timedelta(days=TRIAL_DAYS)
-        _airtable_create_prospect({
-            "Name":        name,
-            "Email":       email,
-            "Company":     company,
-            "FirstOpened": today_str,
-            "ExpiresAt":   expires_date.strftime("%Y-%m-%d"),
-            "LastAccess":  today_str,
-            "AccessCount": 1,
-        })
+  .btn-primary {
+    width: 100%;
+    margin-top: 1.4rem;
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: bold;
+    padding: 0.75rem;
+    cursor: pointer;
+    font-family: Georgia, serif;
+    letter-spacing: 0.04em;
+    transition: background 0.2s;
+  }
 
-    session["name"]    = name
-    session["email"]   = email
-    session["company"] = company
-    return jsonify({"ok": True})
+  .btn-primary:hover { background: var(--gold2); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+  .gate-contact {
+    margin-top: 1.2rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
 
-@app.route("/upload", methods=["POST"])
-def upload():
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided."}), 400
+  .gate-contact a { color: var(--gold); text-decoration: none; }
 
-    f = request.files["file"]
-    if not f.filename:
-        return jsonify({"error": "Empty filename."}), 400
+  .gate-error {
+    background: rgba(224,85,85,0.15);
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    color: var(--red);
+    font-size: 0.85rem;
+    padding: 0.6rem 0.85rem;
+    margin-top: 1rem;
+    display: none;
+    text-align: left;
+  }
 
-    suffix = os.path.splitext(f.filename)[1].lower() or ".drf"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        f.save(tmp.name)
-        tmp_path = tmp.name
+  /* ── APP ──────────────────────────────────────────────────────── */
+  #app { display: none; flex-direction: column; height: 100vh; }
 
-    try:
-        races = parse_brisnet_file(tmp_path)
-    except Exception as e:
-        return jsonify({"error": f"Could not parse file: {e}"}), 400
-    finally:
-        try:
-            os.unlink(tmp_path)
-        except Exception:
-            pass
+  /* Header */
+  .app-header {
+    background: var(--slate);
+    border-bottom: 1px solid var(--border);
+    padding: 0.6rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
 
-    if not races:
-        return jsonify({"error": "No races found in file."}), 400
+  .header-logo {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
 
-    upload_id = str(uuid.uuid4())
-    race_store[upload_id] = races
+  .header-logo span {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: block;
+    margin-top: -2px;
+  }
 
-    # Convert tuple keys to string keys for JSON compatibility
-    str_races = {}
-    for key, race in races.items():
-        str_key = f"{key[0]}|{key[1]}|{key[2]}" if isinstance(key, tuple) else str(key)
-        str_races[str_key] = race
-    race_store[upload_id] = str_races
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    flex: 1;
+  }
 
-    race_list = []
-    for str_key, race in str_races.items():
-        horses = race.get("horses", [])
-        race_num = race.get("race_num", "?")
-        # Try to get race_num from key if not in race dict
-        if race_num == "?" and "|" in str_key:
-            race_num = str_key.split("|")[2]
-        race_list.append({
-            "key":        str_key,
-            "race_num":   race_num,
-            "distance":   race.get("distance", ""),
-            "surface":    race.get("surface", ""),
-            "race_class": race.get("race_class", ""),
-            "num_horses": len(horses),
-        })
+  .track-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
 
-    race_list.sort(key=lambda r: int(str(r["race_num"])) if str(r["race_num"]).isdigit() else 0)
-    return jsonify({"upload_id": upload_id, "races": race_list})
+  .track-name {
+    font-size: 0.9rem;
+    color: var(--gold2);
+    font-weight: bold;
+  }
 
+  select {
+    background: var(--navy);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+  }
 
-@app.route("/analyze")
-def analyze():
-    upload_id = request.args.get("upload_id", "")
-    race_key  = request.args.get("race_key", "")
+  select:focus { border-color: var(--gold); }
 
-    if upload_id not in race_store:
-        return Response(_err_stream("Session expired. Please re-upload your file."), mimetype="text/event-stream")
+  .btn-upload {
+    background: var(--slate2);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    color: var(--gold);
+    font-size: 0.8rem;
+    padding: 0.35rem 0.8rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
 
-    races = race_store[upload_id]
-    if race_key not in races:
-        return Response(_err_stream("Race not found."), mimetype="text/event-stream")
+  .btn-upload:hover { background: rgba(201,168,76,0.15); }
 
-    race     = races[race_key]
-    prompt   = build_claude_prompt(race)
-    email    = session.get("email", "unknown")
-    race_num = race.get("race_num", "")
+  .btn-analyze {
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    color: var(--navy);
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 0.38rem 1rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
 
-    _airtable_log_usage({
-        "Email":   email,
-        "Track":   race.get("track", ""),
-        "RaceNum": str(race_num),
-        "Date":    datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-    })
+  .btn-analyze:hover { background: var(--gold2); }
+  .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    full_analysis = []
+  /* Error bar */
+  #error-bar {
+    background: rgba(224,85,85,0.15);
+    border-bottom: 1px solid var(--red);
+    color: var(--red);
+    font-size: 0.85rem;
+    padding: 0.5rem 1.2rem;
+    display: none;
+  }
 
-    def generate():
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        try:
-            with client.messages.stream(
-                model=MODEL,
-                max_tokens=MAX_TOKENS,
-                messages=[{"role": "user", "content": prompt}],
-            ) as stream:
-                for text in stream.text_stream:
-                    full_analysis.append(text)
-                    yield f"data: {json.dumps({'text': text})}\n\n"
+  /* Main layout */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
 
-            # Extract picks from completed analysis
-            analysis_text = "".join(full_analysis)
-            win_pick, place_pick = _extract_picks(analysis_text)
+  /* Field panel */
+  #field-panel {
+    width: 340px;
+    min-width: 280px;
+    background: var(--slate);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-            if win_pick["pp"] and place_pick["pp"]:
-                if upload_id not in pick_store:
-                    pick_store[upload_id] = {}
-                pick_store[upload_id][str(race_num)] = {
-                    "win_pp":     win_pick["pp"],
-                    "win_name":   win_pick["name"],
-                    "win_odds":   win_pick["odds"],
-                    "place_pp":   place_pick["pp"],
-                    "place_name": place_pick["name"],
-                    "place_odds": place_pick["odds"],
-                }
-                yield f"data: {json.dumps({'picks': {'win': win_pick, 'place': place_pick}})}\n\n"
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
 
-            yield f"data: {json.dumps({'done': True})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+  .tab {
+    flex: 1;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
 
-    return Response(generate(), mimetype="text/event-stream")
+  .tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
 
+  .panel-content {
+    overflow-y: auto;
+    flex: 1;
+  }
 
-@app.route("/upload_results", methods=["POST"])
-def upload_results():
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided."}), 400
+  /* Field table */
+  .field-hint {
+    font-size: 0.7rem;
+    color: var(--muted);
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.4;
+  }
 
-    f         = request.files["file"]
-    text      = f.read().decode("utf-8", errors="ignore")
-    upload_id = request.form.get("upload_id", "")
-    email     = session.get("email", "unknown")
+  table.field-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
 
-    results = _parse_results(text)
-    if not results:
-        return jsonify({"error": "Could not parse results file."}), 400
+  table.field-table thead th {
+    background: var(--navy);
+    color: var(--muted);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
 
-    picks         = pick_store.get(upload_id, {})
-    card_summary  = []
-    total_invested = 0.0
-    total_returned = 0.0
+  table.field-table tbody tr {
+    border-bottom: 1px solid rgba(42,61,82,0.5);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
 
-    for race_num, race_result in sorted(results.items()):
-        pick    = picks.get(str(race_num), {})
-        win_pp  = pick.get("win_pp")
-        place_pp = pick.get("place_pp")
+  table.field-table tbody tr:hover { background: rgba(201,168,76,0.06); }
+  table.field-table tbody tr.selected { background: rgba(201,168,76,0.12); }
 
-        if not win_pp or not place_pp:
-            card_summary.append({
-                "race_num":        race_num,
-                "winner":          f"PP{race_result['winner_pp']} {race_result['winner_name']}",
-                "place":           f"PP{race_result['place_pp']} {race_result['place_name']}",
-                "picks_available": False,
-            })
-            continue
+  table.field-table td {
+    padding: 0.38rem 0.5rem;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
 
-        roi = _calculate_roi(race_result, win_pp, place_pp)
-        total_invested += roi["invested"]
-        total_returned += roi["returned"]
+  .pp-num {
+    font-weight: bold;
+    color: var(--gold2);
+    font-family: var(--font-mono);
+    width: 22px;
+  }
 
-        _airtable_save_result({
-            "Track":          race_result.get("track", ""),
-            "RaceDate":       race_result.get("date", ""),
-            "RaceNum":        race_num,
-            "WinPick":        pick.get("win_name", ""),
-            "WinPickPP":      win_pp,
-            "WinPickOdds":    pick.get("win_odds", ""),
-            "PlacePick":      pick.get("place_name", ""),
-            "PlacePickPP":    place_pp,
-            "PlacePickOdds":  pick.get("place_odds", ""),
-            "ActualWinner":   race_result.get("winner_name", ""),
-            "ActualPlace":    race_result.get("place_name", ""),
-            "WinBetResult":   "HIT" if roi["win_hit"] else "MISS",
-            "PlaceBetResult": "HIT" if roi["place_hit"] else "MISS",
-            "ExactaHit":      roi["exacta_hit"],
-            "WinPayout":      roi["win_return"],
-            "PlacePayout":    roi["place_return"],
-            "ExactaPayout":   roi["exacta_return"],
-            "RaceROI":        roi["roi"],
-            "Email":          email,
-        })
+  .horse-name {
+    font-weight: bold;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
 
-        card_summary.append({
-            "race_num":     race_num,
-            "win_pick":     f"PP{win_pp} {pick.get('win_name', '')}",
-            "place_pick":   f"PP{place_pp} {pick.get('place_name', '')}",
-            "winner":       f"PP{race_result['winner_pp']} {race_result['winner_name']}",
-            "place":        f"PP{race_result['place_pp']} {race_result['place_name']}",
-            "win_hit":      roi["win_hit"],
-            "place_hit":    roi["place_hit"],
-            "exacta_hit":   roi["exacta_hit"],
-            "win_return":   roi["win_return"],
-            "place_return": roi["place_return"],
-            "exacta_return": roi["exacta_return"],
-            "invested":     roi["invested"],
-            "returned":     roi["returned"],
-            "roi":          roi["roi"],
-            "picks_available": True,
-        })
+  .fig { font-family: var(--font-mono); color: var(--muted); font-size: 0.75rem; }
+  .fig.good { color: var(--green); }
+  .fig.ml { color: var(--text); }
 
-    card_roi = round(((total_returned - total_invested) / total_invested * 100), 1) if total_invested > 0 else 0
+  .badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+  }
 
-    return jsonify({
-        "ok": True,
-        "races": card_summary,
-        "card_total": {
-            "invested":          round(total_invested, 2),
-            "returned":          round(total_returned, 2),
-            "roi":               card_roi,
-            "races_with_picks":  sum(1 for r in card_summary if r.get("picks_available")),
-        }
-    })
+  .badge-E  { background: rgba(61,186,126,0.2); color: var(--green); }
+  .badge-EP { background: rgba(201,168,76,0.2); color: var(--gold); }
+  .badge-P  { background: rgba(122,143,166,0.2); color: var(--muted); }
+  .badge-S  { background: rgba(224,85,85,0.15); color: var(--red); }
 
+  /* Race list */
+  .race-list { padding: 0.4rem; }
 
-# RESULTS PARSING HELPERS
+  .race-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+  }
 
-def _parse_results(text):
-    races = {}
-    ordinal_map = {
-        'FIRST': 1, 'SECOND': 2, 'THIRD': 3, 'FOURTH': 4,
-        'FIFTH': 5, 'SIXTH': 6, 'SEVENTH': 7, 'EIGHTH': 8,
-        'NINTH': 9, 'TENTH': 10, 'ELEVENTH': 11, 'TWELFTH': 12
+  .race-item:hover { background: rgba(201,168,76,0.07); }
+  .race-item.active { background: rgba(201,168,76,0.12); border-color: var(--gold); }
+
+  .race-num-badge {
+    background: var(--navy);
+    color: var(--gold);
+    font-size: 0.75rem;
+    font-weight: bold;
+    font-family: var(--font-mono);
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .race-meta { font-size: 0.78rem; color: var(--text); line-height: 1.3; }
+  .race-meta-sub { font-size: 0.68rem; color: var(--muted); }
+
+  /* Analysis panel */
+  #analysis-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .analysis-header {
+    background: var(--slate2);
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .analysis-race-title {
+    font-size: 0.9rem;
+    color: var(--gold2);
+    font-weight: bold;
+  }
+
+  #analysis-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.2rem 1.5rem;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-family: Georgia, serif;
+  }
+
+  .analysis-placeholder {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    margin-top: 4rem;
+    line-height: 1.8;
+  }
+
+  .analysis-placeholder strong {
+    display: block;
+    font-size: 1.1rem;
+    color: var(--text);
+    font-style: normal;
+    margin-bottom: 0.5rem;
+  }
+
+  .picks-bar {
+    background: var(--slate);
+    border-top: 1px solid var(--border);
+    padding: 0.6rem 1.2rem;
+    display: none;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .pick-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .pick-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .pick-horse {
+    font-weight: bold;
+    color: var(--gold2);
+  }
+
+  .pick-odds { color: var(--muted); font-size: 0.78rem; }
+
+  /* Upload overlay */
+  #upload-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13,27,42,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #upload-overlay.show { display: flex; }
+
+  .upload-modal {
+    background: var(--slate);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2rem;
+    width: 420px;
+    max-width: 95vw;
+  }
+
+  .upload-modal h3 {
+    color: var(--gold);
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .upload-modal p {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+    line-height: 1.5;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .drop-zone:hover,
+  .drop-zone.drag-over {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.05);
+  }
+
+  .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .drop-zone-text { font-size: 0.85rem; color: var(--text); }
+  .drop-zone-sub  { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
+
+  #file-input { display: none; }
+
+  .upload-progress {
+    display: none;
+    text-align: center;
+    padding: 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .upload-error {
+    display: none;
+    color: var(--red);
+    font-size: 0.82rem;
+    margin-top: 0.8rem;
+    padding: 0.5rem 0.7rem;
+    background: rgba(224,85,85,0.1);
+    border-radius: var(--radius);
+    border: 1px solid rgba(224,85,85,0.3);
+  }
+
+  .modal-btn-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+    justify-content: flex-end;
+  }
+
+  .btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .btn-cancel:hover { border-color: var(--muted); }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(201,168,76,0.3);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--muted);
+    font-size: 0.85rem;
+    gap: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── GATE ─────────────────────────────────────────────────────────────── -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="logo-title">TrackIQ</div>
+    <div class="logo-sub">Intelligent Handicapping · Smarter Wagering</div>
+
+    <div class="gate-headline">Unlock Your Free Demo</div>
+    <div class="gate-sub">Get 3 days of full access — free.</div>
+    <div class="gate-fine">No credit card required.</div>
+
+    <div class="gate-bullets">
+      <span>✓ AI-powered picks</span>
+      <span>✓ Pace simulation</span>
+      <span>✓ Closing line value tracking</span>
+    </div>
+
+    <div class="gate-trust">
+      Built on the same industry-standard data professional handicappers and<br>
+      syndicates rely on — <em>Brisnet &amp; Equibase.</em>
+    </div>
+
+    <label class="field-label" for="g-name">Your Name</label>
+    <input id="g-name" type="text" placeholder="Jane Smith" autocomplete="name">
+
+    <label class="field-label" for="g-email">Your Email Address</label>
+    <input id="g-email" type="email" placeholder="you@example.com" autocomplete="email">
+
+    <label class="field-label" for="g-company">Company / Organization (optional)</label>
+    <input id="g-company" type="text" placeholder="e.g. Lone Star Handicappers">
+
+    <button class="btn-primary" id="gate-btn" onclick="doRegister()">🔑 Unlock My Free Demo</button>
+
+    <div class="gate-error" id="gate-error"></div>
+
+    <div class="gate-contact">
+      Questions? Contact <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ──────────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="header-logo">
+      TrackIQ
+      <span>Intelligent Handicapping · Smarter Wagering</span>
+    </div>
+
+    <div class="header-controls">
+      <span class="track-label">Track:</span>
+      <span class="track-name" id="track-name">—</span>
+
+      <select id="race-select" onchange="selectRace(this.value)" style="max-width:220px;">
+        <option value="">— Load a PP file to begin —</option>
+      </select>
+
+      <button class="btn-upload" onclick="showUpload()">📂 Load PP File</button>
+      <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ Analyze Race</button>
+    </div>
+  </div>
+
+  <!-- Error bar -->
+  <div id="error-bar"></div>
+
+  <!-- Body -->
+  <div class="app-body">
+
+    <!-- Left: field / races panel -->
+    <div id="field-panel">
+      <div class="panel-tabs">
+        <div class="tab active" id="tab-field" onclick="switchTab('field')">Field</div>
+        <div class="tab" id="tab-races" onclick="switchTab('races')">Races</div>
+      </div>
+      <div class="panel-content" id="panel-content">
+        <div class="empty-state">
+          <div class="empty-icon">🏇</div>
+          <div>Load a Brisnet PP file<br>to see the field</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: analysis -->
+    <div id="analysis-panel">
+      <div class="analysis-header">
+        <span class="analysis-race-title" id="analysis-title">No race selected</span>
+        <span id="analysis-status"></span>
+      </div>
+      <div id="analysis-output">
+        <div class="analysis-placeholder">
+          <strong>Welcome to TrackIQ</strong>
+          1. Load a Brisnet .DRF or .bris file using "Load PP File"<br>
+          2. Select a race from the dropdown or Races tab<br>
+          3. Click "Analyze Race" to get AI-powered handicapping
+        </div>
+      </div>
+      <div class="picks-bar" id="picks-bar">
+        <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">AI Picks:</span>
+        <div class="pick-item" id="pick-win" style="display:none">
+          <span class="pick-label">Win</span>
+          <span class="pick-horse" id="pick-win-name"></span>
+          <span class="pick-odds" id="pick-win-odds"></span>
+        </div>
+        <div class="pick-item" id="pick-place" style="display:none">
+          <span class="pick-label">Place</span>
+          <span class="pick-horse" id="pick-place-name"></span>
+          <span class="pick-odds" id="pick-place-odds"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── UPLOAD OVERLAY ────────────────────────────────────────────────────── -->
+<div id="upload-overlay">
+  <div class="upload-modal">
+    <h3>Load Brisnet PP File</h3>
+    <p>Upload a Brisnet Single-File PP download (.DRF or .bris). The file will be parsed on the server and races will appear in the dropdown.</p>
+
+    <div class="drop-zone" id="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="onDragOver(event)"
+         ondragleave="onDragLeave(event)"
+         ondrop="onDrop(event)">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-text">Click to browse or drag &amp; drop</div>
+      <div class="drop-zone-sub" id="drop-filename">Accepts .DRF and .bris files</div>
+    </div>
+    <input type="file" id="file-input" accept=".DRF,.drf,.bris,.csv" onchange="onFileSelected(event)">
+
+    <div class="upload-progress" id="upload-progress">
+      <span class="spinner"></span>&nbsp; Parsing file, please wait…
+    </div>
+
+    <div class="upload-error" id="upload-error"></div>
+
+    <div class="modal-btn-row">
+      <button class="btn-cancel" onclick="hideUpload()">Cancel</button>
+      <button class="btn-primary" id="upload-btn" onclick="doUpload()" disabled style="width:auto;margin-top:0;padding:0.4rem 1.2rem;">Upload &amp; Parse</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let uploadId    = null;
+let races       = {};       // key -> race metadata
+let currentKey  = null;
+let currentTab  = 'field';
+let selectedFile = null;
+let analyzing   = false;
+
+// ── GATE ───────────────────────────────────────────────────────────────────
+function doRegister() {
+  const name    = document.getElementById('g-name').value.trim();
+  const email   = document.getElementById('g-email').value.trim();
+  const company = document.getElementById('g-company').value.trim();
+  const errEl   = document.getElementById('gate-error');
+  const btn     = document.getElementById('gate-btn');
+
+  errEl.style.display = 'none';
+  if (!name) { showGateErr('Please enter your name.'); return; }
+  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  fetch('/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, company })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.expired) {
+      showGateErr(data.message || 'Your trial has expired. Contact mgoldberg@emarketingsg.com to continue.');
+      btn.disabled = false;
+      btn.textContent = '🔑 Unlock My Free Demo';
+      return;
     }
-
-    sections = re.split(r'(?=(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE)', text, flags=re.IGNORECASE)
-
-    for section in sections:
-        if not section.strip():
-            continue
-        m = re.match(r'(FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE', section.strip(), re.IGNORECASE)
-        if not m:
-            continue
-        race_num = ordinal_map[m.group(1).upper()]
-
-        track_m = re.search(r'(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|ELEVENTH|TWELFTH)\s+RACE\s+(.+?)\s+(\w+\s+\d+\w*,?\s+\d{4})', section, re.IGNORECASE)
-        track = track_m.group(1).strip() if track_m else ""
-        date  = track_m.group(2).strip() if track_m else ""
-
-        mutuel = re.findall(r'(\d+)-([A-Z][A-Z\s\']+?)\s+([\d.]+)(?:\s+([\d.]+))?(?:\s+([\d.]+))?\s*\.', section)
-        finish_order = []
-        horse_payoffs = {}
-
-        for i, match in enumerate(mutuel[:3]):
-            pp_num = int(match[0])
-            name   = match[1].strip()
-            finish_order.append(pp_num)
-            if i == 0:
-                horse_payoffs[pp_num] = {'win': float(match[2] or 0), 'place': float(match[3] or 0), 'name': name}
-            elif i == 1:
-                horse_payoffs[pp_num] = {'win': 0, 'place': float(match[2] or 0), 'name': name}
-            else:
-                horse_payoffs[pp_num] = {'win': 0, 'place': 0, 'name': name}
-
-        ex = re.search(r'EXACTOR\s*\((\d+)-(\d+)\)\s*PAID\s*\$([\d.]+)', section, re.IGNORECASE)
-
-        races[race_num] = {
-            'race_num':      race_num,
-            'track':         track,
-            'date':          date,
-            'finish_order':  finish_order,
-            'horse_payoffs': horse_payoffs,
-            'winner_pp':     finish_order[0] if finish_order else None,
-            'place_pp':      finish_order[1] if len(finish_order) > 1 else None,
-            'winner_name':   horse_payoffs.get(finish_order[0], {}).get('name', '') if finish_order else '',
-            'place_name':    horse_payoffs.get(finish_order[1], {}).get('name', '') if len(finish_order) > 1 else '',
-            'win_payout':    horse_payoffs.get(finish_order[0], {}).get('win', 0) if finish_order else 0,
-            'place_payout':  horse_payoffs.get(finish_order[0], {}).get('place', 0) if finish_order else 0,
-            'exacta_pp1':    int(ex.group(1)) if ex else None,
-            'exacta_pp2':    int(ex.group(2)) if ex else None,
-            'exacta_payout': float(ex.group(3)) if ex else 0.0,
-        }
-
-    return races
-
-
-def _calculate_roi(race_result, win_pick_pp, place_pick_pp):
-    invested  = 6.0
-    returned  = 0.0
-    winner_pp = race_result.get('winner_pp')
-    place_pp  = race_result.get('place_pp')
-
-    win_hit    = (win_pick_pp == winner_pp)
-    win_return = race_result.get('win_payout', 0) if win_hit else 0.0
-    returned  += win_return
-
-    place_hit = place_pick_pp in [winner_pp, place_pp]
-    if place_hit:
-        if place_pick_pp == winner_pp:
-            place_return = race_result.get('place_payout', 0)
-        else:
-            place_return = race_result.get('horse_payoffs', {}).get(place_pick_pp, {}).get('place', 0)
-    else:
-        place_return = 0.0
-    returned += place_return
-
-    exacta_hit    = (race_result.get('exacta_pp1') == win_pick_pp and race_result.get('exacta_pp2') == place_pick_pp)
-    exacta_return = race_result.get('exacta_payout', 0) * 2 if exacta_hit else 0.0
-    returned     += exacta_return
-
-    return {
-        'invested':      invested,
-        'returned':      returned,
-        'roi':           round(((returned - invested) / invested) * 100, 1),
-        'win_hit':       win_hit,
-        'win_return':    win_return,
-        'place_hit':     place_hit,
-        'place_return':  place_return,
-        'exacta_hit':    exacta_hit,
-        'exacta_return': exacta_return,
+    if (data.error) {
+      showGateErr(data.error);
+      btn.disabled = false;
+      btn.textContent = '🔑 Unlock My Free Demo';
+      return;
     }
+    if (data.ok) {
+      document.getElementById('gate').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+    }
+  })
+  .catch(() => {
+    showGateErr('Connection error — please try again.');
+    btn.disabled = false;
+    btn.textContent = '🔑 Unlock My Free Demo';
+  });
+}
 
+function showGateErr(msg) {
+  const el = document.getElementById('gate-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
 
-def _extract_picks(analysis_text):
-    win_pick   = {'pp': None, 'name': '', 'odds': ''}
-    place_pick = {'pp': None, 'name': '', 'odds': ''}
+// Enter key on gate inputs
+['g-name','g-email','g-company'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') doRegister();
+  });
+});
 
-    win_m = re.search(r'WIN PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)', analysis_text, re.IGNORECASE | re.DOTALL)
-    if win_m:
-        win_pick = {'pp': int(win_m.group(1)), 'name': win_m.group(2).strip(), 'odds': win_m.group(3).strip()}
+// ── UPLOAD ─────────────────────────────────────────────────────────────────
+function showUpload() {
+  selectedFile = null;
+  document.getElementById('drop-filename').textContent = 'Accepts .DRF and .bris files';
+  document.getElementById('upload-btn').disabled = true;
+  document.getElementById('upload-error').style.display = 'none';
+  document.getElementById('upload-progress').style.display = 'none';
+  document.getElementById('upload-overlay').classList.add('show');
+}
 
-    place_m = re.search(r'PLACE PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)', analysis_text, re.IGNORECASE | re.DOTALL)
-    if place_m:
-        place_pick = {'pp': int(place_m.group(1)), 'name': place_m.group(2).strip(), 'odds': place_m.group(3).strip()}
+function hideUpload() {
+  document.getElementById('upload-overlay').classList.remove('show');
+}
 
-    return win_pick, place_pick
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('drag-over');
+}
 
+function onDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('drag-over');
+}
 
-# AIRTABLE HELPERS
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+}
 
-def _at_headers():
-    return {"Authorization": f"Bearer {AIRTABLE_PAT}", "Content-Type": "application/json"}
+function onFileSelected(e) {
+  const file = e.target.files[0];
+  if (file) setFile(file);
+}
 
-def _airtable_find_prospect(email):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}"
-    try:
-        r = requests.get(url, headers=_at_headers(), params={"filterByFormula": f"LOWER({{Email}})='{email}'"}, timeout=10)
-        records = r.json().get("records", [])
-        return records[0] if records else None
-    except Exception:
-        return None
+function setFile(file) {
+  selectedFile = file;
+  document.getElementById('drop-filename').textContent = '✓ ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+  document.getElementById('upload-btn').disabled = false;
+  document.getElementById('upload-error').style.display = 'none';
+}
 
-def _airtable_create_prospect(fields):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}"
-    try:
-        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
-    except Exception:
-        pass
+function doUpload() {
+  if (!selectedFile) return;
 
-def _airtable_update_prospect(record_id, fields):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_PROSPECTS}/{record_id}"
-    try:
-        requests.patch(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
-    except Exception:
-        pass
+  const progEl = document.getElementById('upload-progress');
+  const errEl  = document.getElementById('upload-error');
+  const btn    = document.getElementById('upload-btn');
 
-def _airtable_log_usage(fields):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_USAGE}"
-    try:
-        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
-    except Exception:
-        pass
+  progEl.style.display = 'block';
+  errEl.style.display  = 'none';
+  btn.disabled = true;
 
-def _airtable_save_result(fields):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_RESULTS}"
-    try:
-        requests.post(url, headers=_at_headers(), json={"fields": fields}, timeout=10)
-    except Exception:
-        pass
+  const fd = new FormData();
+  fd.append('file', selectedFile);
 
-def _err_stream(msg):
-    yield f"data: {json.dumps({'error': msg})}\n\n"
+  fetch('/upload', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      progEl.style.display = 'none';
+      if (data.error) {
+        errEl.textContent    = data.error;
+        errEl.style.display  = 'block';
+        btn.disabled = false;
+        return;
+      }
+      // Success — load races
+      uploadId = data.upload_id;
+      races    = {};
+      data.races.forEach(r => { races[r.key] = r; });
+      populateRaceDropdown(data.races);
+      hideUpload();
 
+      // Auto-select first race
+      if (data.races.length > 0) {
+        selectRace(data.races[0].key);
+      }
+    })
+    .catch(err => {
+      progEl.style.display = 'none';
+      errEl.textContent    = 'Upload failed: ' + err.message;
+      errEl.style.display  = 'block';
+      btn.disabled = false;
+    });
+}
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+// ── RACE SELECTION ─────────────────────────────────────────────────────────
+function populateRaceDropdown(raceList) {
+  const sel = document.getElementById('race-select');
+  sel.innerHTML = '';
+
+  raceList.forEach(r => {
+    const opt  = document.createElement('option');
+    opt.value  = r.key;
+    const surf = r.surface ? ' · ' + r.surface : '';
+    opt.textContent = `Race ${r.race_num} · ${r.distance}${surf} · ${r.race_class} (${r.num_horses} horses)`;
+    sel.appendChild(opt);
+  });
+
+  // Update track name from first race key
+  if (raceList.length > 0) {
+    const parts = raceList[0].key.split('|');
+    document.getElementById('track-name').textContent = parts[0] || '—';
+  }
+
+  renderRaceList(raceList);
+}
+
+function selectRace(key) {
+  if (!key) return;
+  currentKey = key;
+
+  // Update dropdown
+  document.getElementById('race-select').value = key;
+
+  // Update analysis header
+  const r = races[key];
+  if (r) {
+    document.getElementById('analysis-title').textContent =
+      `Race ${r.race_num} · ${r.distance} ${r.surface || ''} · ${r.race_class}`;
+  }
+
+  // Clear analysis
+  document.getElementById('analysis-output').innerHTML =
+    '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;">' +
+    'Click <strong style="color:var(--gold)">⚡ Analyze Race</strong> to run AI handicapping on this race.</div>';
+  document.getElementById('picks-bar').style.display = 'none';
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('analysis-status').textContent = '';
+
+  // Highlight active race in list
+  document.querySelectorAll('.race-item').forEach(el => el.classList.remove('active'));
+  const activeItem = document.querySelector(`.race-item[data-key="${key}"]`);
+  if (activeItem) activeItem.classList.add('active');
+
+  // Render field if we have horse data
+  if (currentTab === 'field') renderFieldPlaceholder();
+}
+
+// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-field').className = 'tab' + (tab === 'field' ? ' active' : '');
+  document.getElementById('tab-races').className = 'tab' + (tab === 'races' ? ' active' : '');
+
+  if (tab === 'races') {
+    renderRaceList(Object.values(races));
+  } else {
+    renderFieldPlaceholder();
+  }
+}
+
+function renderFieldPlaceholder() {
+  const content = document.getElementById('panel-content');
+  if (!currentKey) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">🏇</div><div>Load a Brisnet PP file<br>to see the field</div></div>';
+    return;
+  }
+  const r = races[currentKey];
+  if (!r) return;
+
+  // Show basic race info; full horse data is on server, not sent to browser
+  content.innerHTML = `
+    <div class="field-hint">
+      <strong style="color:var(--gold2)">Race ${r.race_num}</strong> · ${r.distance} ${r.surface || ''} · ${r.race_class}<br>
+      ${r.num_horses} horses · Click <em>Analyze Race</em> for full AI handicapping
+    </div>
+    <div style="padding:1rem;color:var(--muted);font-size:0.8rem;line-height:1.8;">
+      Horse data is parsed server-side from your Brisnet file.<br><br>
+      Full pace figures, Prime Power ratings, speed figures, and past performances are included in the AI analysis.
+    </div>
+  `;
+}
+
+function renderRaceList(raceList) {
+  const content = document.getElementById('panel-content');
+  if (!raceList || raceList.length === 0) {
+    content.innerHTML = '<div class="empty-state"><div class="empty-icon">🏁</div><div>No races loaded</div></div>';
+    return;
+  }
+
+  let html = '<div class="race-list">';
+  raceList.forEach(r => {
+    const active = r.key === currentKey ? ' active' : '';
+    const surf = r.surface ? ' · ' + r.surface : '';
+    html += `
+      <div class="race-item${active}" data-key="${r.key}" onclick="selectRace('${r.key}')">
+        <div class="race-num-badge">R${r.race_num}</div>
+        <div class="race-meta">
+          ${r.distance}${surf}<br>
+          <span class="race-meta-sub">${r.race_class} · ${r.num_horses} horses</span>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  content.innerHTML = html;
+}
+
+// ── ANALYZE ────────────────────────────────────────────────────────────────
+function doAnalyze() {
+  if (!uploadId || !currentKey || analyzing) return;
+
+  analyzing = true;
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('analysis-status').innerHTML = '<span class="spinner"></span> Analyzing…';
+  document.getElementById('picks-bar').style.display = 'none';
+  document.getElementById('analysis-output').textContent = '';
+  hideError();
+
+  const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`;
+  const es  = new EventSource(url);
+  let outputEl = document.getElementById('analysis-output');
+
+  es.onmessage = function(e) {
+    try {
+      const msg = JSON.parse(e.data);
+
+      if (msg.text) {
+        outputEl.textContent += msg.text;
+        outputEl.scrollTop = outputEl.scrollHeight;
+      }
+
+      if (msg.picks) {
+        const bar = document.getElementById('picks-bar');
+        if (msg.picks.win && msg.picks.win.pp) {
+          document.getElementById('pick-win-name').textContent = `#${msg.picks.win.pp} ${msg.picks.win.name}`;
+          document.getElementById('pick-win-odds').textContent = msg.picks.win.odds ? `(${msg.picks.win.odds})` : '';
+          document.getElementById('pick-win').style.display = 'flex';
+        }
+        if (msg.picks.place && msg.picks.place.pp) {
+          document.getElementById('pick-place-name').textContent = `#${msg.picks.place.pp} ${msg.picks.place.name}`;
+          document.getElementById('pick-place-odds').textContent = msg.picks.place.odds ? `(${msg.picks.place.odds})` : '';
+          document.getElementById('pick-place').style.display = 'flex';
+        }
+        bar.style.display = 'flex';
+      }
+
+      if (msg.error) {
+        showError('Analysis error: ' + msg.error);
+        es.close();
+        doneAnalyzing();
+      }
+
+      if (msg.done) {
+        es.close();
+        doneAnalyzing();
+      }
+    } catch(err) {
+      // non-JSON line, ignore
+    }
+  };
+
+  es.onerror = function() {
+    if (analyzing) {
+      showError('Connection lost. Please try again.');
+      es.close();
+      doneAnalyzing();
+    }
+  };
+}
+
+function doneAnalyzing() {
+  analyzing = false;
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('analysis-status').textContent = '';
+}
+
+// ── ERROR BAR ──────────────────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-bar');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-bar').style.display = 'none';
+}
+</script>
+</body>
+</html>
