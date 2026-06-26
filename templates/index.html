@@ -326,6 +326,57 @@
     </div>
   </div>
 
+  <!-- ── WELCOME / QUICK START ── -->
+  <div id="step-welcome" class="card hidden">
+    <div class="card-title">
+      <span class="step-badge">👋</span>
+      Welcome to TrackIQ AI
+    </div>
+    <p style="font-size:0.95rem;color:var(--text);margin-bottom:1.5rem;line-height:1.75;">
+      TrackIQ AI analyzes your Brisnet past performance data using AI to deliver pace scenarios, speed figure breakdowns, class analysis, and top selections — in seconds. Here's how to get your first race card ready:
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.75rem;">
+
+      <div style="display:flex;gap:1rem;align-items:flex-start;">
+        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">1</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Sign in to Brisnet</div>
+          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <a href="https://www.brisnet.com" target="_blank" style="color:var(--gold);text-decoration:none;">brisnet.com</a> and sign in or create a free account.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;align-items:flex-start;">
+        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">2</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Purchase Premium Past Performances</div>
+          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <strong>PPs</strong> and purchase <strong>Premium Past Performances</strong> for the track and date you want to analyze.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;align-items:flex-start;">
+        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">3</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Download your DRF file</div>
+          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Go to <strong>My Products</strong> and download the file you purchased. Save it somewhere easy to find on your computer.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;align-items:flex-start;">
+        <div style="min-width:2rem;height:2rem;background:var(--navy);color:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:0.8rem;font-weight:700;">4</div>
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text);margin-bottom:0.2rem;">Upload your file to TrackIQ AI</div>
+          <div style="font-size:0.85rem;color:var(--muted);line-height:1.6;">Click <strong>Continue</strong> below to go to the upload page, then drag your DRF file onto the upload area or click to browse for it.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="btn-welcome">Continue to Upload →</button>
+    </div>
+  </div>
+
   <!-- ── STEP 2: UPLOAD ── -->
   <div id="step-upload" class="card hidden">
     <div class="card-title">
@@ -461,11 +512,17 @@
       sessionStorage.setItem('brisai_company', company);
 
       hideEl('step-contact');
-      showEl('step-upload');
+      showEl('step-welcome');
     } catch (e) {
       showErr('err-contact', 'Network error. Please try again.');
       btn.disabled = false; btn.textContent = 'Continue →';
     }
+  });
+
+  // ── WELCOME ───────────────────────────────────────────────────────────────
+  document.getElementById('btn-welcome').addEventListener('click', () => {
+    hideEl('step-welcome');
+    showEl('step-upload');
   });
 
   // ── STEP 2: FILE UPLOAD ───────────────────────────────────────────────────
