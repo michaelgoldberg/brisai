@@ -7,12 +7,12 @@
 <style>
   :root {
     --navy:   #0d1b2a;
-    --gold:   #c9a84c;
-    --gold2:  #e8c96a;
+    --gold:   #d4a843;
+    --gold2:  #f0d060;
     --slate:  #1e2d40;
     --slate2: #243447;
     --text:   #d4c9b0;
-    --muted:  #7a8fa6;
+    --muted:  #96afc4;
     --green:  #3dba7e;
     --red:    #e05555;
     --border: #2a3d52;
@@ -58,9 +58,9 @@
   }
 
   .logo-sub {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     letter-spacing: 0.25em;
-    color: var(--muted);
+    color: #a8c0d6;
     text-transform: uppercase;
     margin-top: 0.2rem;
     margin-bottom: 1.8rem;
@@ -68,7 +68,7 @@
 
   .gate-headline {
     font-size: 1.25rem;
-    color: var(--gold2);
+    color: #ffffff;
     margin-bottom: 0.4rem;
   }
 
@@ -79,8 +79,8 @@
   }
 
   .gate-fine {
-    font-size: 0.8rem;
-    color: var(--muted);
+    font-size: 0.85rem;
+    color: #a8c0d6;
     margin-bottom: 1.5rem;
   }
 
@@ -89,14 +89,14 @@
     justify-content: center;
     gap: 1.2rem;
     font-size: 0.78rem;
-    color: var(--gold);
+    color: var(--text);
     margin-bottom: 1.2rem;
     flex-wrap: wrap;
   }
 
   .gate-trust {
-    font-size: 0.75rem;
-    color: var(--muted);
+    font-size: 0.82rem;
+    color: #a8c0d6;
     font-style: italic;
     margin-bottom: 1.8rem;
     line-height: 1.5;
@@ -108,7 +108,7 @@
     display: block;
     font-size: 0.7rem;
     letter-spacing: 0.15em;
-    color: var(--muted);
+    color: #a8c0d6;
     text-transform: uppercase;
     text-align: left;
     margin-bottom: 0.3rem;
@@ -221,7 +221,7 @@
 
   .track-name {
     font-size: 0.9rem;
-    color: var(--gold2);
+    color: #ffffff;
     font-weight: bold;
   }
 
@@ -432,7 +432,7 @@
     text-align: center;
   }
 
-  .race-meta { font-size: 0.78rem; color: var(--text); line-height: 1.3; }
+  .race-meta { font-size: 0.78rem; color: #ffffff; line-height: 1.3; }
   .race-meta-sub { font-size: 0.68rem; color: var(--muted); }
 
   /* Analysis panel */
@@ -457,7 +457,7 @@
 
   .analysis-race-title {
     font-size: 0.9rem;
-    color: var(--gold2);
+    color: #ffffff;
     font-weight: bold;
   }
 
@@ -473,19 +473,21 @@
   }
 
   .analysis-placeholder {
-    color: var(--muted);
-    font-style: italic;
+    color: #b8cfe0;
+    font-style: normal;
     text-align: center;
     margin-top: 4rem;
-    line-height: 1.8;
+    line-height: 2.2;
+    font-size: 1rem;
   }
 
   .analysis-placeholder strong {
     display: block;
-    font-size: 1.1rem;
-    color: var(--text);
+    font-size: 1.4rem;
+    color: #ffffff;
     font-style: normal;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: 0.03em;
   }
 
   .picks-bar {
@@ -514,7 +516,7 @@
 
   .pick-horse {
     font-weight: bold;
-    color: var(--gold2);
+    color: #ffffff;
   }
 
   .pick-odds { color: var(--muted); font-size: 0.78rem; }
@@ -710,6 +712,9 @@
       </select>
 
       <button class="btn-upload" onclick="showUpload()">📂 Load PP File</button>
+      <select id="sample-select" onchange="loadSample(this.value)" style="max-width:260px;">
+        <option value="">— or pick a sample card —</option>
+      </select>
       <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ Analyze Race</button>
     </div>
   </div>
@@ -842,6 +847,7 @@ function doRegister() {
     if (data.ok) {
       document.getElementById('gate').style.display = 'none';
       document.getElementById('app').style.display = 'flex';
+      initSampleCards();
     }
   })
   .catch(() => {
@@ -1129,6 +1135,47 @@ function doneAnalyzing() {
   analyzing = false;
   document.getElementById('analyze-btn').disabled = false;
   document.getElementById('analysis-status').textContent = '';
+}
+
+
+// ── SAMPLE CARDS ──────────────────────────────────────────────────────────
+function loadSample(cardId) {
+  if (!cardId) return;
+  document.getElementById('sample-select').value = '';
+  document.getElementById('analysis-output').innerHTML =
+    '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Loading card…</div>';
+  hideError();
+
+  fetch(`/load_sample?card=${encodeURIComponent(cardId)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { showError(data.error); return; }
+      uploadId = data.upload_id;
+      races = {};
+      data.races.forEach(r => { races[r.key] = r; });
+      populateRaceDropdown(data.races);
+      document.getElementById('track-name').textContent = data.label || cardId;
+      document.getElementById('analysis-output').innerHTML =
+        '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;">' +
+        'Select a race and click <strong style="color:var(--gold)">⚡ Analyze Race</strong></div>';
+      if (data.races.length > 0) selectRace(data.races[0].key);
+    })
+    .catch(err => showError('Could not load sample: ' + err.message));
+}
+
+function initSampleCards() {
+  fetch('/sample_cards')
+    .then(r => r.json())
+    .then(data => {
+      const sel = document.getElementById('sample-select');
+      data.cards.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.label;
+        sel.appendChild(opt);
+      });
+    })
+    .catch(() => {});
 }
 
 // ── ERROR BAR ──────────────────────────────────────────────────────────────
