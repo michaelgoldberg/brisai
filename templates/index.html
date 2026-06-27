@@ -5,836 +5,254 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackIQ — Intelligent Handicapping</title>
 <style>
-  :root {
-    --navy:   #0d1b2a;
-    --gold:   #d4a843;
-    --gold2:  #f0d060;
-    --slate:  #1e2d40;
-    --slate2: #243447;
-    --text:   #d4c9b0;
-    --muted:  #96afc4;
-    --green:  #3dba7e;
-    --red:    #e05555;
-    --border: #2a3d52;
-    --radius: 6px;
-    --font-mono: 'Courier New', Courier, monospace;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--navy);
-    color: var(--text);
-    font-family: Georgia, 'Times New Roman', serif;
-    min-height: 100vh;
-  }
-
-  /* ── GATE ─────────────────────────────────────────────────────── */
-  #gate {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 2rem;
-  }
-
-  .gate-card {
-    background: var(--slate);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 2.5rem 3rem;
-    width: 100%;
-    max-width: 480px;
-    text-align: center;
-  }
-
-  .logo-title {
-    font-size: 2.4rem;
-    font-weight: bold;
-    color: var(--gold);
-    letter-spacing: 0.08em;
-    font-family: Georgia, serif;
-  }
-
-  .logo-sub {
-    font-size: 0.75rem;
-    letter-spacing: 0.25em;
-    color: #a8c0d6;
-    text-transform: uppercase;
-    margin-top: 0.2rem;
-    margin-bottom: 1.8rem;
-  }
-
-  .gate-headline {
-    font-size: 1.25rem;
-    color: #ffffff;
-    margin-bottom: 0.4rem;
-  }
-
-  .gate-sub {
-    font-size: 0.95rem;
-    color: var(--text);
-    margin-bottom: 0.25rem;
-  }
-
-  .gate-fine {
-    font-size: 0.85rem;
-    color: #a8c0d6;
-    margin-bottom: 1.5rem;
-  }
-
-  .gate-bullets {
-    display: flex;
-    justify-content: center;
-    gap: 1.2rem;
-    font-size: 0.78rem;
-    color: var(--text);
-    margin-bottom: 1.2rem;
-    flex-wrap: wrap;
-  }
-
-  .gate-trust {
-    font-size: 0.82rem;
-    color: #a8c0d6;
-    font-style: italic;
-    margin-bottom: 1.8rem;
-    line-height: 1.5;
-  }
-
-  .gate-trust em { color: var(--text); font-style: normal; }
-
-  .field-label {
-    display: block;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: #a8c0d6;
-    text-transform: uppercase;
-    text-align: left;
-    margin-bottom: 0.3rem;
-    margin-top: 1rem;
-  }
-
-  input[type="text"],
-  input[type="email"] {
-    width: 100%;
-    background: var(--navy);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-size: 0.95rem;
-    padding: 0.6rem 0.85rem;
-    font-family: inherit;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  input[type="text"]:focus,
-  input[type="email"]:focus {
-    border-color: var(--gold);
-  }
-
-  .btn-primary {
-    width: 100%;
-    margin-top: 1.4rem;
-    background: var(--gold);
-    color: var(--navy);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 1rem;
-    font-weight: bold;
-    padding: 0.75rem;
-    cursor: pointer;
-    font-family: Georgia, serif;
-    letter-spacing: 0.04em;
-    transition: background 0.2s;
-  }
-
-  .btn-primary:hover { background: var(--gold2); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .gate-contact {
-    margin-top: 1.2rem;
-    font-size: 0.75rem;
-    color: var(--muted);
-  }
-
-  .gate-contact a { color: var(--gold); text-decoration: none; }
-
-  .gate-error {
-    background: rgba(224,85,85,0.15);
-    border: 1px solid var(--red);
-    border-radius: var(--radius);
-    color: var(--red);
-    font-size: 0.85rem;
-    padding: 0.6rem 0.85rem;
-    margin-top: 1rem;
-    display: none;
-    text-align: left;
-  }
-
-  /* ── APP ──────────────────────────────────────────────────────── */
-  #app { display: none; flex-direction: column; height: 100vh; }
-
-  /* Header */
-  .app-header {
-    background: var(--slate);
-    border-bottom: 1px solid var(--border);
-    padding: 0.6rem 1.2rem;
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-    flex-wrap: wrap;
-  }
-
-  .header-logo {
-    font-size: 1.3rem;
-    font-weight: bold;
-    color: var(--gold);
-    letter-spacing: 0.06em;
-    white-space: nowrap;
-  }
-
-  .header-logo span {
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-    display: block;
-    margin-top: -2px;
-  }
-
-  .header-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-    flex: 1;
-  }
-
-  .track-label {
-    font-size: 0.7rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .track-name {
-    font-size: 0.9rem;
-    color: #ffffff;
-    font-weight: bold;
-  }
-
-  select {
-    background: var(--navy);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-size: 0.85rem;
-    padding: 0.35rem 0.6rem;
-    font-family: inherit;
-    cursor: pointer;
-    outline: none;
-  }
-
-  select:focus { border-color: var(--gold); }
-
-  .btn-upload {
-    background: var(--slate2);
-    border: 1px solid var(--gold);
-    border-radius: var(--radius);
-    color: var(--gold);
-    font-size: 0.8rem;
-    padding: 0.35rem 0.8rem;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-
-  .btn-upload:hover { background: rgba(201,168,76,0.15); }
-
-  .btn-sim {
-    background: var(--slate2);
-    border: 1px solid var(--gold);
-    border-radius: var(--radius);
-    color: var(--gold);
-    font-size: 0.85rem;
-    font-weight: bold;
-    padding: 0.38rem 1rem;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-  .btn-sim:hover { background: rgba(201,168,76,0.15); }
-  .btn-sim:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .btn-analyze {
-    background: var(--gold);
-    border: none;
-    border-radius: var(--radius);
-    color: var(--navy);
-    font-size: 0.85rem;
-    font-weight: bold;
-    padding: 0.38rem 1rem;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-
-  .btn-analyze:hover { background: var(--gold2); }
-  .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* Error bar */
-  #error-bar {
-    background: rgba(224,85,85,0.15);
-    border-bottom: 1px solid var(--red);
-    color: var(--red);
-    font-size: 0.85rem;
-    padding: 0.5rem 1.2rem;
-    display: none;
-  }
-
-  /* Main layout */
-  .app-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* Field panel */
-  #field-panel {
-    width: 340px;
-    min-width: 280px;
-    background: var(--slate);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .panel-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tab {
-    flex: 1;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    padding: 0.5rem;
-    text-align: center;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
-  }
-
-  .tab.active {
-    color: var(--gold);
-    border-bottom-color: var(--gold);
-  }
-
-  .panel-content {
-    overflow-y: auto;
-    flex: 1;
-  }
-
-  /* Field table */
-  .field-hint {
-    font-size: 0.7rem;
-    color: var(--muted);
-    padding: 0.5rem 0.8rem;
-    border-bottom: 1px solid var(--border);
-    line-height: 1.4;
-  }
-
-  table.field-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.78rem;
-  }
-
-  table.field-table thead th {
-    background: var(--navy);
-    color: var(--muted);
-    font-size: 0.62rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.35rem 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-
-  table.field-table tbody tr {
-    border-bottom: 1px solid rgba(42,61,82,0.5);
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-
-  table.field-table tbody tr:hover { background: rgba(201,168,76,0.06); }
-  table.field-table tbody tr.selected { background: rgba(201,168,76,0.12); }
-
-  table.field-table td {
-    padding: 0.38rem 0.5rem;
-    vertical-align: middle;
-    white-space: nowrap;
-  }
-
-  .pp-num {
-    font-weight: bold;
-    color: var(--gold2);
-    font-family: var(--font-mono);
-    width: 22px;
-  }
-
-  .horse-name {
-    font-weight: bold;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
-  }
-
-  .fig { font-family: var(--font-mono); color: var(--muted); font-size: 0.75rem; }
-  .fig.good { color: var(--green); }
-  .fig.ml { color: var(--text); }
-
-  .badge {
-    display: inline-block;
-    font-size: 0.6rem;
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
-    font-weight: bold;
-    letter-spacing: 0.05em;
-  }
-
-  .badge-E  { background: rgba(61,186,126,0.2); color: var(--green); }
-  .badge-EP { background: rgba(201,168,76,0.2); color: var(--gold); }
-  .badge-P  { background: rgba(122,143,166,0.2); color: var(--muted); }
-  .badge-S  { background: rgba(224,85,85,0.15); color: var(--red); }
-
-  /* Race list */
-  .race-list { padding: 0.4rem; }
-
-  .race-item {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.6rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: background 0.1s;
-    border: 1px solid transparent;
-  }
-
-  .race-item:hover { background: rgba(201,168,76,0.07); }
-  .race-item.active { background: rgba(201,168,76,0.12); border-color: var(--gold); }
-
-  .race-num-badge {
-    background: var(--navy);
-    color: var(--gold);
-    font-size: 0.75rem;
-    font-weight: bold;
-    font-family: var(--font-mono);
-    padding: 0.15rem 0.45rem;
-    border-radius: 3px;
-    min-width: 28px;
-    text-align: center;
-  }
-
-  .race-meta { font-size: 0.78rem; color: #ffffff; line-height: 1.3; }
-  .race-meta-sub { font-size: 0.68rem; color: var(--muted); }
-
-  /* Analysis panel */
-  #analysis-panel {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .analysis-header {
-    background: var(--slate2);
-    border-bottom: 1px solid var(--border);
-    padding: 0.5rem 1rem;
-    font-size: 0.78rem;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-
-  .analysis-race-title {
-    font-size: 0.9rem;
-    color: #ffffff;
-    font-weight: bold;
-  }
-
-  #analysis-output {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.2rem 1.5rem;
-    font-size: 0.88rem;
-    line-height: 1.7;
-    color: var(--text);
-    white-space: pre-wrap;
-    font-family: Georgia, serif;
-  }
-
-  .analysis-placeholder {
-    color: #b8cfe0;
-    font-style: normal;
-    text-align: center;
-    margin-top: 4rem;
-    line-height: 2.2;
-    font-size: 1rem;
-  }
-
-  .analysis-placeholder strong {
-    display: block;
-    font-size: 1.4rem;
-    color: #ffffff;
-    font-style: normal;
-    margin-bottom: 1rem;
-    letter-spacing: 0.03em;
-  }
-
-  .picks-bar {
-    background: var(--slate);
-    border-top: 1px solid var(--border);
-    padding: 0.6rem 1.2rem;
-    display: none;
-    gap: 1.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .pick-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.82rem;
-  }
-
-  .pick-label {
-    font-size: 0.65rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .pick-horse {
-    font-weight: bold;
-    color: #ffffff;
-  }
-
-  .pick-odds { color: var(--muted); font-size: 0.78rem; }
-
-  /* Upload overlay */
-  #upload-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(13,27,42,0.85);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #upload-overlay.show { display: flex; }
-
-  .upload-modal {
-    background: var(--slate);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 2rem;
-    width: 420px;
-    max-width: 95vw;
-  }
-
-  .upload-modal h3 {
-    color: var(--gold);
-    font-size: 1.1rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .upload-modal p {
-    font-size: 0.82rem;
-    color: var(--muted);
-    margin-bottom: 1.2rem;
-    line-height: 1.5;
-  }
-
-  .drop-zone {
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-  }
-
-  .drop-zone:hover,
-  .drop-zone.drag-over {
-    border-color: var(--gold);
-    background: rgba(201,168,76,0.05);
-  }
-
-  .drop-zone-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-  .drop-zone-text { font-size: 0.85rem; color: var(--text); }
-  .drop-zone-sub  { font-size: 0.72rem; color: var(--muted); margin-top: 0.3rem; }
-
-  #file-input { display: none; }
-
-  .upload-progress {
-    display: none;
-    text-align: center;
-    padding: 1rem;
-    color: var(--muted);
-    font-size: 0.85rem;
-  }
-
-  .upload-error {
-    display: none;
-    color: var(--red);
-    font-size: 0.82rem;
-    margin-top: 0.8rem;
-    padding: 0.5rem 0.7rem;
-    background: rgba(224,85,85,0.1);
-    border-radius: var(--radius);
-    border: 1px solid rgba(224,85,85,0.3);
-  }
-
-  .modal-btn-row {
-    display: flex;
-    gap: 0.6rem;
-    margin-top: 1.2rem;
-    justify-content: flex-end;
-  }
-
-  .btn-cancel {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--muted);
-    font-size: 0.85rem;
-    padding: 0.4rem 0.9rem;
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  .btn-cancel:hover { border-color: var(--muted); }
-
-  /* Spinner */
-  .spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid rgba(201,168,76,0.3);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Empty state */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--muted);
-    font-size: 0.85rem;
-    gap: 0.5rem;
-    padding: 2rem;
-    text-align: center;
-  }
-
-  .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-
-  /* Sim table */
-  .sim-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 1rem; }
-  .sim-table th { background: var(--navy); color: var(--muted); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
-  .sim-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(42,61,82,0.4); }
-  .sim-table tr:hover td { background: rgba(201,168,76,0.05); }
-  .ev-positive { color: var(--green); font-weight: bold; }
-  .ev-negative { color: var(--red); }
-  .ev-neutral  { color: var(--muted); }
-  .sim-meta { font-size: 0.8rem; color: var(--text); margin-top: 1rem; padding: 0.6rem; background: var(--slate2); border-radius: var(--radius); line-height: 1.6; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: var(--navy); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+:root {
+  --navy:  #0d1b2a; --gold: #d4a843; --gold2: #f0d060;
+  --slate: #1e2d40; --slate2: #243447; --text: #d4c9b0;
+  --muted: #96afc4; --green: #3dba7e; --red: #e05555;
+  --border: #2a3d52; --radius: 6px;
+  --mono: 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--navy); color: var(--text); font-family: Georgia, serif; min-height: 100vh; }
+
+/* GATE */
+#gate { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; }
+.gate-card { background:var(--slate); border:1px solid var(--border); border-radius:10px; padding:2.5rem 3rem; width:100%; max-width:480px; text-align:center; }
+.logo-title { font-size:2.4rem; font-weight:bold; color:var(--gold); letter-spacing:0.08em; }
+.logo-sub { font-size:0.75rem; letter-spacing:0.25em; color:#a8c0d6; text-transform:uppercase; margin-top:0.2rem; margin-bottom:1.8rem; }
+.gate-headline { font-size:1.25rem; color:#fff; margin-bottom:0.4rem; }
+.gate-sub { font-size:0.95rem; color:var(--text); margin-bottom:0.25rem; }
+.gate-fine { font-size:0.85rem; color:#a8c0d6; margin-bottom:1.5rem; }
+.gate-bullets { display:flex; justify-content:center; gap:1.2rem; font-size:0.78rem; color:var(--text); margin-bottom:1.2rem; flex-wrap:wrap; }
+.gate-trust { font-size:0.82rem; color:#a8c0d6; font-style:italic; margin-bottom:1.8rem; line-height:1.5; }
+.gate-trust em { color:var(--text); font-style:normal; }
+.field-label { display:block; font-size:0.7rem; letter-spacing:0.15em; color:#a8c0d6; text-transform:uppercase; text-align:left; margin-bottom:0.3rem; margin-top:1rem; }
+input[type="text"], input[type="email"] { width:100%; background:var(--navy); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:0.95rem; padding:0.6rem 0.85rem; font-family:inherit; outline:none; transition:border-color 0.2s; }
+input:focus { border-color:var(--gold); }
+.btn-primary { width:100%; margin-top:1.4rem; background:var(--gold); color:var(--navy); border:none; border-radius:var(--radius); font-size:1rem; font-weight:bold; padding:0.75rem; cursor:pointer; font-family:Georgia,serif; transition:background 0.2s; }
+.btn-primary:hover { background:var(--gold2); }
+.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+.gate-contact { margin-top:1.2rem; font-size:0.75rem; color:var(--muted); }
+.gate-contact a { color:var(--gold); text-decoration:none; }
+.gate-error { background:rgba(224,85,85,0.15); border:1px solid var(--red); border-radius:var(--radius); color:var(--red); font-size:0.85rem; padding:0.6rem 0.85rem; margin-top:1rem; display:none; text-align:left; }
+
+/* APP */
+#app { display:none; flex-direction:column; height:100vh; }
+
+/* Header */
+.app-header { background:var(--slate); border-bottom:1px solid var(--border); padding:0.5rem 1rem; display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; }
+.header-logo { font-size:1.2rem; font-weight:bold; color:var(--gold); letter-spacing:0.06em; white-space:nowrap; }
+.header-logo span { font-size:0.55rem; letter-spacing:0.2em; color:var(--muted); text-transform:uppercase; display:block; }
+.hdr-sep { color:var(--border); }
+.track-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+.track-name { font-size:0.9rem; color:#fff; font-weight:bold; }
+select { background:var(--navy); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:0.82rem; padding:0.3rem 0.5rem; font-family:inherit; cursor:pointer; outline:none; }
+select:focus { border-color:var(--gold); }
+.btn-load { background:var(--slate2); border:1px solid var(--gold); border-radius:var(--radius); color:var(--gold); font-size:0.78rem; padding:0.3rem 0.7rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.btn-load:hover { background:rgba(201,168,76,0.15); }
+.btn-sim { background:var(--slate2); border:1px solid #5b8dd9; border-radius:var(--radius); color:#7ab3f0; font-size:0.78rem; font-weight:bold; padding:0.3rem 0.7rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.btn-sim:hover { background:rgba(91,141,217,0.15); }
+.btn-sim:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-analyze { background:var(--gold); border:none; border-radius:var(--radius); color:var(--navy); font-size:0.78rem; font-weight:bold; padding:0.3rem 0.8rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.btn-analyze:hover { background:var(--gold2); }
+.btn-analyze:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Error bar */
+#error-bar { background:rgba(224,85,85,0.15); border-bottom:1px solid var(--red); color:var(--red); font-size:0.85rem; padding:0.4rem 1rem; display:none; }
+
+/* Body */
+.app-body { display:flex; flex:1; overflow:hidden; }
+
+/* Left panel */
+#left-panel { width:380px; min-width:300px; background:var(--slate); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+.panel-tabs { display:flex; border-bottom:1px solid var(--border); }
+.ptab { flex:1; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0.5rem; text-align:center; cursor:pointer; border-bottom:2px solid transparent; }
+.ptab.active { color:var(--gold); border-bottom-color:var(--gold); }
+#left-content { overflow-y:auto; flex:1; }
+
+/* Field table */
+.field-hint { font-size:0.7rem; color:var(--muted); padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); }
+table.ftable { width:100%; border-collapse:collapse; font-size:0.72rem; }
+table.ftable thead th { background:var(--navy); color:var(--muted); font-size:0.6rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.3rem 0.4rem; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+table.ftable tbody tr { border-bottom:1px solid rgba(42,61,82,0.5); cursor:pointer; }
+table.ftable tbody tr:hover { background:rgba(201,168,76,0.06); }
+table.ftable tbody tr.sel { background:rgba(201,168,76,0.12); }
+table.ftable td { padding:0.3rem 0.4rem; vertical-align:middle; white-space:nowrap; }
+.td-pp { font-weight:bold; color:var(--gold2); font-family:var(--mono); }
+.td-horse { font-weight:bold; color:#fff; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+.td-fig { font-family:var(--mono); color:var(--muted); }
+.td-ml { font-family:var(--mono); color:var(--text); }
+.style-badge { font-size:0.58rem; padding:0.1rem 0.25rem; border-radius:2px; font-weight:bold; }
+.s-E  { background:rgba(61,186,126,0.2); color:var(--green); }
+.s-EP { background:rgba(201,168,76,0.2); color:var(--gold); }
+.s-P  { background:rgba(122,143,166,0.2); color:var(--muted); }
+.s-S  { background:rgba(224,85,85,0.15); color:var(--red); }
+
+/* Race list */
+.race-list { padding:0.3rem; }
+.race-item { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.5rem; border-radius:var(--radius); cursor:pointer; border:1px solid transparent; }
+.race-item:hover { background:rgba(201,168,76,0.07); }
+.race-item.active { background:rgba(201,168,76,0.12); border-color:var(--gold); }
+.r-badge { background:var(--navy); color:var(--gold); font-size:0.72rem; font-weight:bold; font-family:var(--mono); padding:0.12rem 0.4rem; border-radius:3px; min-width:26px; text-align:center; }
+.r-meta { font-size:0.75rem; color:#fff; line-height:1.3; }
+.r-sub { font-size:0.65rem; color:var(--muted); }
+
+/* Right panel */
+#right-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.analysis-header { background:var(--slate2); border-bottom:1px solid var(--border); padding:0.45rem 1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
+.analysis-title { font-size:0.88rem; color:#fff; font-weight:bold; }
+#analysis-status { font-size:0.78rem; color:var(--muted); }
+#analysis-output { flex:1; overflow-y:auto; padding:1.2rem 1.5rem; font-size:0.88rem; line-height:1.7; color:var(--text); white-space:pre-wrap; font-family:Georgia,serif; }
+.placeholder { color:var(--muted); text-align:center; margin-top:4rem; line-height:2.2; font-size:1rem; }
+.placeholder strong { display:block; font-size:1.4rem; color:#fff; margin-bottom:1rem; }
+
+/* Picks bar */
+.picks-bar { background:var(--slate); border-top:1px solid var(--border); padding:0.5rem 1rem; display:none; gap:1.2rem; align-items:center; flex-wrap:wrap; }
+.pick-item { display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; }
+.pick-label { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+.pick-horse { font-weight:bold; color:#fff; }
+.pick-odds { color:var(--muted); font-size:0.75rem; }
+.pick-exacta { font-family:var(--mono); color:var(--gold2); font-weight:bold; }
+
+/* Sim table */
+.sim-wrap { padding:1rem 1.5rem; }
+.sim-title { font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.8rem; }
+table.sim-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+table.sim-table th { background:var(--navy); color:var(--muted); font-size:0.62rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.35rem 0.6rem; text-align:left; border-bottom:1px solid var(--border); }
+table.sim-table td { padding:0.38rem 0.6rem; border-bottom:1px solid rgba(42,61,82,0.4); }
+table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
+.ev-pos { color:var(--green); font-weight:bold; }
+.ev-neg { color:var(--red); }
+.ev-neu { color:var(--muted); }
+.sim-meta { font-size:0.8rem; color:var(--text); margin-top:1rem; padding:0.6rem 0.8rem; background:var(--slate2); border-radius:var(--radius); line-height:1.7; }
+
+/* Upload modal */
+#upload-overlay { display:none; position:fixed; inset:0; background:rgba(13,27,42,0.85); z-index:100; align-items:center; justify-content:center; }
+#upload-overlay.show { display:flex; }
+.upload-modal { background:var(--slate); border:1px solid var(--border); border-radius:10px; padding:2rem; width:420px; max-width:95vw; }
+.upload-modal h3 { color:var(--gold); font-size:1.1rem; margin-bottom:0.4rem; }
+.upload-modal p { font-size:0.82rem; color:var(--muted); margin-bottom:1.2rem; line-height:1.5; }
+.drop-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:2rem; text-align:center; cursor:pointer; transition:border-color 0.2s, background 0.2s; }
+.drop-zone:hover, .drop-zone.drag-over { border-color:var(--gold); background:rgba(201,168,76,0.05); }
+.drop-icon { font-size:2rem; margin-bottom:0.5rem; }
+.drop-text { font-size:0.85rem; color:var(--text); }
+.drop-sub { font-size:0.72rem; color:var(--muted); margin-top:0.3rem; }
+#file-input { display:none; }
+.upload-progress { display:none; text-align:center; padding:1rem; color:var(--muted); font-size:0.85rem; }
+.upload-error { display:none; color:var(--red); font-size:0.82rem; margin-top:0.8rem; padding:0.5rem 0.7rem; background:rgba(224,85,85,0.1); border-radius:var(--radius); border:1px solid rgba(224,85,85,0.3); }
+.modal-btns { display:flex; gap:0.6rem; margin-top:1.2rem; justify-content:flex-end; }
+.btn-cancel { background:transparent; border:1px solid var(--border); border-radius:var(--radius); color:var(--muted); font-size:0.85rem; padding:0.4rem 0.9rem; cursor:pointer; font-family:inherit; }
+
+/* Spinner */
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(201,168,76,0.3); border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:0.85rem; gap:0.5rem; padding:2rem; text-align:center; }
+.empty-icon { font-size:2.5rem; margin-bottom:0.5rem; }
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:var(--navy); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 </style>
 </head>
 <body>
 
-<!-- ── GATE ─────────────────────────────────────────────────────────────── -->
+<!-- GATE -->
 <div id="gate">
   <div class="gate-card">
     <div class="logo-title">TrackIQ</div>
     <div class="logo-sub">Intelligent Handicapping · Smarter Wagering</div>
-
     <div class="gate-headline">Unlock Your Free Demo</div>
     <div class="gate-sub">Get 3 days of full access — free.</div>
     <div class="gate-fine">No credit card required.</div>
-
     <div class="gate-bullets">
       <span>✓ AI-powered picks</span>
-      <span>✓ Pace simulation</span>
+      <span>✓ Monte Carlo simulation</span>
       <span>✓ Closing line value tracking</span>
     </div>
-
-    <div class="gate-trust">
-      Built on the same industry-standard data professional handicappers and<br>
-      syndicates rely on — <em>Brisnet &amp; Equibase.</em>
-    </div>
-
+    <div class="gate-trust">Built on the same industry-standard data professional handicappers and syndicates rely on — <em>Brisnet &amp; Equibase.</em></div>
     <label class="field-label" for="g-name">Your Name</label>
     <input id="g-name" type="text" placeholder="Jane Smith" autocomplete="name">
-
     <label class="field-label" for="g-email">Your Email Address</label>
     <input id="g-email" type="email" placeholder="you@example.com" autocomplete="email">
-
     <label class="field-label" for="g-company">Company / Organization (optional)</label>
     <input id="g-company" type="text" placeholder="e.g. Lone Star Handicappers">
-
     <button class="btn-primary" id="gate-btn" onclick="doRegister()">🔑 Unlock My Free Demo</button>
-
     <div class="gate-error" id="gate-error"></div>
-
-    <div class="gate-contact">
-      Questions? Contact <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a>
-    </div>
+    <div class="gate-contact">Questions? Contact <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a></div>
   </div>
 </div>
 
-<!-- ── APP ──────────────────────────────────────────────────────────────── -->
+<!-- APP -->
 <div id="app">
-
-  <!-- Header -->
   <div class="app-header">
-    <div class="header-logo">
-      TrackIQ
-      <span>Intelligent Handicapping · Smarter Wagering</span>
-    </div>
-
-    <div class="header-controls">
-      <span class="track-label">Track:</span>
-      <span class="track-name" id="track-name">—</span>
-
-      <select id="race-select" onchange="selectRace(this.value)" style="max-width:220px;">
-        <option value="">— Load a PP file to begin —</option>
-      </select>
-
-      <button class="btn-upload" onclick="showUpload()">📂 Load PP File</button>
-      <select id="sample-select" onchange="loadSample(this.value)" style="max-width:260px;">
-        <option value="">— or pick a sample card —</option>
-      </select>
-      <button class="btn-sim" id="sim-btn" onclick="doSimulate()" disabled>🎲 Simulate</button>
-      <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ Analyze Race</button>
-    </div>
+    <div class="header-logo">TrackIQ<span>Intelligent Handicapping · Smarter Wagering</span></div>
+    <span class="track-label">Track:</span>
+    <span class="track-name" id="track-name">—</span>
+    <select id="race-select" onchange="selectRace(this.value)" style="max-width:240px;">
+      <option value="">— Load a card to begin —</option>
+    </select>
+    <button class="btn-load" onclick="showUpload()">📂 Load PP File</button>
+    <select id="sample-select" onchange="loadSample(this.value)" style="max-width:220px;">
+      <option value="">— or pick a sample card —</option>
+    </select>
+    <button class="btn-sim" id="sim-btn" onclick="doSimulate()" disabled>🎲 Run Simulation</button>
+    <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ AI Analysis</button>
   </div>
-
-  <!-- Error bar -->
   <div id="error-bar"></div>
-
-  <!-- Body -->
   <div class="app-body">
 
-    <!-- Left: field / races panel -->
-    <div id="field-panel">
+    <!-- Left -->
+    <div id="left-panel">
       <div class="panel-tabs">
-        <div class="tab active" id="tab-field" onclick="switchTab('field')">Field</div>
-        <div class="tab" id="tab-races" onclick="switchTab('races')">Races</div>
+        <div class="ptab active" id="tab-field" onclick="switchTab('field')">Field</div>
+        <div class="ptab" id="tab-races" onclick="switchTab('races')">Races</div>
       </div>
-      <div class="panel-content" id="panel-content">
-        <div class="empty-state">
-          <div class="empty-icon">🏇</div>
-          <div>Load a Brisnet PP file<br>to see the field</div>
-        </div>
+      <div id="left-content">
+        <div class="empty"><div class="empty-icon">🏇</div><div>Load a card to see the field</div></div>
       </div>
     </div>
 
-    <!-- Right: analysis -->
-    <div id="analysis-panel">
+    <!-- Right -->
+    <div id="right-panel">
       <div class="analysis-header">
-        <span class="analysis-race-title" id="analysis-title">No race selected</span>
+        <span class="analysis-title" id="analysis-title">No race selected</span>
         <span id="analysis-status"></span>
       </div>
       <div id="analysis-output">
-        <div class="analysis-placeholder">
+        <div class="placeholder">
           <strong>Welcome to TrackIQ</strong>
-          1. Load a Brisnet .DRF or .bris file using "Load PP File"<br>
-          2. Select a race from the dropdown or Races tab<br>
-          3. Click "Analyze Race" to get AI-powered handicapping
+          1. Load a Brisnet .DRF file or pick a sample card<br>
+          2. Select a race from the dropdown<br>
+          3. Click <strong style="color:var(--gold)">🎲 Run Simulation</strong> for Monte Carlo probabilities<br>
+          4. Click <strong style="color:var(--gold)">⚡ AI Analysis</strong> for full handicapping
         </div>
       </div>
       <div class="picks-bar" id="picks-bar">
-        <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;">AI Picks:</span>
-        <div class="pick-item" id="pick-win" style="display:none">
-          <span class="pick-label">WIN</span>
-          <span class="pick-horse" id="pick-win-name"></span>
-          <span class="pick-odds" id="pick-win-odds"></span>
-        </div>
-        <div class="pick-item" id="pick-place" style="display:none">
-          <span class="pick-label">PLACE</span>
-          <span class="pick-horse" id="pick-place-name"></span>
-          <span class="pick-odds" id="pick-place-odds"></span>
-        </div>
-        <div class="pick-item" id="pick-show" style="display:none">
-          <span class="pick-label">SHOW</span>
-          <span class="pick-horse" id="pick-show-name"></span>
-          <span class="pick-odds" id="pick-show-odds"></span>
-        </div>
-        <div class="pick-item" id="pick-exacta" style="display:none">
-          <span class="pick-label">EXACTA</span>
-          <span class="pick-horse" id="pick-exacta-val"></span>
-        </div>
-        <div class="pick-item" id="pick-trifecta" style="display:none">
-          <span class="pick-label">TRIFECTA</span>
-          <span class="pick-horse" id="pick-trifecta-val"></span>
-        </div>
+        <span style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">AI Picks:</span>
+        <div class="pick-item" id="pick-win" style="display:none"><span class="pick-label">WIN</span><span class="pick-horse" id="pick-win-name"></span><span class="pick-odds" id="pick-win-odds"></span></div>
+        <div class="pick-item" id="pick-place" style="display:none"><span class="pick-label">PLACE</span><span class="pick-horse" id="pick-place-name"></span><span class="pick-odds" id="pick-place-odds"></span></div>
+        <div class="pick-item" id="pick-show" style="display:none"><span class="pick-label">SHOW</span><span class="pick-horse" id="pick-show-name"></span><span class="pick-odds" id="pick-show-odds"></span></div>
+        <div class="pick-item" id="pick-exacta" style="display:none"><span class="pick-label">EXACTA</span><span class="pick-exacta" id="pick-exacta-val"></span></div>
+        <div class="pick-item" id="pick-trifecta" style="display:none"><span class="pick-label">TRIFECTA</span><span class="pick-exacta" id="pick-trifecta-val"></span></div>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- ── UPLOAD OVERLAY ────────────────────────────────────────────────────── -->
+<!-- UPLOAD MODAL -->
 <div id="upload-overlay">
   <div class="upload-modal">
     <h3>Load Brisnet PP File</h3>
-    <p>Upload a Brisnet Single-File PP download (.DRF or .bris). The file will be parsed on the server and races will appear in the dropdown.</p>
-
-    <div class="drop-zone" id="drop-zone"
-         onclick="document.getElementById('file-input').click()"
-         ondragover="onDragOver(event)"
-         ondragleave="onDragLeave(event)"
-         ondrop="onDrop(event)">
-      <div class="drop-zone-icon">📄</div>
-      <div class="drop-zone-text">Click to browse or drag &amp; drop</div>
-      <div class="drop-zone-sub" id="drop-filename">Accepts .DRF and .bris files</div>
+    <p>Upload a Brisnet Single-File PP download (.DRF or .bris). Parsed server-side.</p>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="drop-icon">📄</div>
+      <div class="drop-text">Click to browse or drag &amp; drop</div>
+      <div class="drop-sub" id="drop-filename">Accepts .DRF and .bris files</div>
     </div>
     <input type="file" id="file-input" accept=".DRF,.drf,.bris,.csv" onchange="onFileSelected(event)">
-
-    <div class="upload-progress" id="upload-progress">
-      <span class="spinner"></span>&nbsp; Parsing file, please wait…
-    </div>
-
+    <div class="upload-progress" id="upload-progress"><span class="spinner"></span>&nbsp; Parsing file…</div>
     <div class="upload-error" id="upload-error"></div>
-
-    <div class="modal-btn-row">
+    <div class="modal-btns">
       <button class="btn-cancel" onclick="hideUpload()">Cancel</button>
       <button class="btn-primary" id="upload-btn" onclick="doUpload()" disabled style="width:auto;margin-top:0;padding:0.4rem 1.2rem;">Upload &amp; Parse</button>
     </div>
@@ -842,473 +260,264 @@
 </div>
 
 <script>
-// ── STATE ──────────────────────────────────────────────────────────────────
-let uploadId    = null;
-let races       = {};       // key -> race metadata
-let currentKey  = null;
-let currentTab  = 'field';
-let selectedFile = null;
-let analyzing   = false;
+let uploadId = null, races = {}, currentKey = null, currentTab = 'field';
+let selectedFile = null, analyzing = false, simData = null;
 
-// ── GATE ───────────────────────────────────────────────────────────────────
+// GATE
 function doRegister() {
-  const name    = document.getElementById('g-name').value.trim();
-  const email   = document.getElementById('g-email').value.trim();
+  const name = document.getElementById('g-name').value.trim();
+  const email = document.getElementById('g-email').value.trim();
   const company = document.getElementById('g-company').value.trim();
-  const errEl   = document.getElementById('gate-error');
-  const btn     = document.getElementById('gate-btn');
-
-  errEl.style.display = 'none';
+  const btn = document.getElementById('gate-btn');
   if (!name) { showGateErr('Please enter your name.'); return; }
-  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Checking…';
-
-  fetch('/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, company })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.expired) {
-      showGateErr(data.message || 'Your trial has expired. Contact mgoldberg@emarketingsg.com to continue.');
-      btn.disabled = false;
-      btn.textContent = '🔑 Unlock My Free Demo';
-      return;
-    }
-    if (data.error) {
-      showGateErr(data.error);
-      btn.disabled = false;
-      btn.textContent = '🔑 Unlock My Free Demo';
-      return;
-    }
-    if (data.ok) {
-      document.getElementById('gate').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      initSampleCards();
-    }
-  })
-  .catch(() => {
-    showGateErr('Connection error — please try again.');
-    btn.disabled = false;
-    btn.textContent = '🔑 Unlock My Free Demo';
-  });
+  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email.'); return; }
+  btn.disabled = true; btn.textContent = 'Checking…';
+  fetch('/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,company}) })
+    .then(r=>r.json()).then(data => {
+      if (data.expired) { showGateErr(data.message || 'Trial expired.'); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; return; }
+      if (data.error)   { showGateErr(data.error); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; return; }
+      if (data.ok) {
+        document.getElementById('gate').style.display='none';
+        document.getElementById('app').style.display='flex';
+        initSampleCards();
+      }
+    }).catch(()=>{ showGateErr('Connection error.'); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; });
 }
+function showGateErr(msg) { const el=document.getElementById('gate-error'); el.textContent=msg; el.style.display='block'; }
+['g-name','g-email','g-company'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') doRegister(); }));
 
-function showGateErr(msg) {
-  const el = document.getElementById('gate-error');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-// Enter key on gate inputs
-['g-name','g-email','g-company'].forEach(id => {
-  document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter') doRegister();
-  });
-});
-
-// ── UPLOAD ─────────────────────────────────────────────────────────────────
-function showUpload() {
-  selectedFile = null;
-  document.getElementById('drop-filename').textContent = 'Accepts .DRF and .bris files';
-  document.getElementById('upload-btn').disabled = true;
-  document.getElementById('upload-error').style.display = 'none';
-  document.getElementById('upload-progress').style.display = 'none';
-  document.getElementById('upload-overlay').classList.add('show');
-}
-
-function hideUpload() {
-  document.getElementById('upload-overlay').classList.remove('show');
-}
-
-function onDragOver(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.add('drag-over');
-}
-
-function onDragLeave(e) {
-  document.getElementById('drop-zone').classList.remove('drag-over');
-}
-
-function onDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) setFile(file);
-}
-
-function onFileSelected(e) {
-  const file = e.target.files[0];
-  if (file) setFile(file);
-}
-
-function setFile(file) {
-  selectedFile = file;
-  document.getElementById('drop-filename').textContent = '✓ ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
-  document.getElementById('upload-btn').disabled = false;
-  document.getElementById('upload-error').style.display = 'none';
-}
-
+// UPLOAD
+function showUpload() { selectedFile=null; document.getElementById('drop-filename').textContent='Accepts .DRF and .bris files'; document.getElementById('upload-btn').disabled=true; document.getElementById('upload-error').style.display='none'; document.getElementById('upload-progress').style.display='none'; document.getElementById('upload-overlay').classList.add('show'); }
+function hideUpload() { document.getElementById('upload-overlay').classList.remove('show'); }
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function onDragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) setFile(f); }
+function onFileSelected(e) { const f=e.target.files[0]; if(f) setFile(f); }
+function setFile(f) { selectedFile=f; document.getElementById('drop-filename').textContent='✓ '+f.name+' ('+(f.size/1024).toFixed(0)+' KB)'; document.getElementById('upload-btn').disabled=false; document.getElementById('upload-error').style.display='none'; }
 function doUpload() {
   if (!selectedFile) return;
-
-  const progEl = document.getElementById('upload-progress');
-  const errEl  = document.getElementById('upload-error');
-  const btn    = document.getElementById('upload-btn');
-
-  progEl.style.display = 'block';
-  errEl.style.display  = 'none';
-  btn.disabled = true;
-
-  const fd = new FormData();
-  fd.append('file', selectedFile);
-
-  fetch('/upload', { method: 'POST', body: fd })
-    .then(r => r.json())
-    .then(data => {
-      progEl.style.display = 'none';
-      if (data.error) {
-        errEl.textContent    = data.error;
-        errEl.style.display  = 'block';
-        btn.disabled = false;
-        return;
-      }
-      // Success — load races
-      uploadId = data.upload_id;
-      races    = {};
-      data.races.forEach(r => { races[r.key] = r; });
-      populateRaceDropdown(data.races);
-      hideUpload();
-
-      // Auto-select first race
-      if (data.races.length > 0) {
-        selectRace(data.races[0].key);
-      }
-    })
-    .catch(err => {
-      progEl.style.display = 'none';
-      errEl.textContent    = 'Upload failed: ' + err.message;
-      errEl.style.display  = 'block';
-      btn.disabled = false;
-    });
+  const prog=document.getElementById('upload-progress'), errEl=document.getElementById('upload-error'), btn=document.getElementById('upload-btn');
+  prog.style.display='block'; errEl.style.display='none'; btn.disabled=true;
+  const fd=new FormData(); fd.append('file',selectedFile);
+  fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+    prog.style.display='none';
+    if (data.error) { errEl.textContent=data.error; errEl.style.display='block'; btn.disabled=false; return; }
+    loadRaces(data.upload_id, data.races, null);
+    hideUpload();
+  }).catch(err=>{ prog.style.display='none'; errEl.textContent='Upload failed: '+err.message; errEl.style.display='block'; btn.disabled=false; });
 }
 
-// ── RACE SELECTION ─────────────────────────────────────────────────────────
-function populateRaceDropdown(raceList) {
-  const sel = document.getElementById('race-select');
-  sel.innerHTML = '';
+// SAMPLE CARDS
+function initSampleCards() {
+  fetch('/sample_cards').then(r=>r.json()).then(data=>{
+    const sel=document.getElementById('sample-select');
+    data.cards.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.label; sel.appendChild(o); });
+  }).catch(()=>{});
+}
+function loadSample(cardId) {
+  if (!cardId) return;
+  document.getElementById('sample-select').value='';
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Loading card…</div>');
+  fetch(`/load_sample?card=${encodeURIComponent(cardId)}`).then(r=>r.json()).then(data=>{
+    if (data.error) { showError(data.error); return; }
+    loadRaces(data.upload_id, data.races, data.label);
+  }).catch(err=>showError('Could not load sample: '+err.message));
+}
 
-  raceList.forEach(r => {
-    const opt  = document.createElement('option');
-    opt.value  = r.key;
-    const surf = r.surface ? ' · ' + r.surface : '';
-    opt.textContent = `Race ${r.race_num} · ${r.distance}${surf} · ${r.race_class} (${r.num_horses} horses)`;
-    sel.appendChild(opt);
+// RACE LOADING
+function loadRaces(uid, raceList, label) {
+  uploadId=uid; races={}; simData=null;
+  raceList.forEach(r=>{ races[r.key]=r; });
+  const sel=document.getElementById('race-select');
+  sel.innerHTML='';
+  raceList.forEach(r=>{
+    const o=document.createElement('option'); o.value=r.key;
+    const surf=r.surface?' · '+r.surface:'';
+    o.textContent=`Race ${r.race_num} · ${r.distance}${surf} · ${r.race_class} (${r.num_horses})`;
+    sel.appendChild(o);
   });
-
-  // Update track name from first race key
-  if (raceList.length > 0) {
-    const parts = raceList[0].key.split('|');
-    document.getElementById('track-name').textContent = parts[0] || '—';
-  }
-
-  renderRaceList(raceList);
+  const trackName = label || (raceList.length>0 ? raceList[0].key.split('|')[0] : '—');
+  document.getElementById('track-name').textContent=trackName;
+  if (currentTab==='races') renderRaceList(raceList);
+  if (raceList.length>0) selectRace(raceList[0].key);
 }
 
+// RACE SELECTION
 function selectRace(key) {
   if (!key) return;
-  currentKey = key;
-
-  // Update dropdown
-  document.getElementById('race-select').value = key;
-
-  // Update analysis header
-  const r = races[key];
-  if (r) {
-    document.getElementById('analysis-title').textContent =
-      `Race ${r.race_num} · ${r.distance} ${r.surface || ''} · ${r.race_class}`;
-  }
-
-  // Clear analysis
-  document.getElementById('analysis-output').innerHTML =
-    '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;">' +
-    'Click <strong style="color:var(--gold)">⚡ Analyze Race</strong> to run AI handicapping on this race.</div>';
-  document.getElementById('picks-bar').style.display = 'none';
-  document.getElementById('analyze-btn').disabled = false;
-  document.getElementById('sim-btn').disabled = false;
-  document.getElementById('analysis-status').textContent = '';
-
-  // Highlight active race in list
-  document.querySelectorAll('.race-item').forEach(el => el.classList.remove('active'));
-  const activeItem = document.querySelector(`.race-item[data-key="${key}"]`);
-  if (activeItem) activeItem.classList.add('active');
-
-  // Render field if we have horse data
-  if (currentTab === 'field') renderFieldPlaceholder();
+  currentKey=key;
+  simData=null;
+  document.getElementById('race-select').value=key;
+  const r=races[key];
+  if (r) document.getElementById('analysis-title').textContent=`Race ${r.race_num} · ${r.distance} ${r.surface||''} · ${r.race_class}`;
+  setOutput('<div class="placeholder">Click <strong style="color:var(--gold)">🎲 Run Simulation</strong> or <strong style="color:var(--gold)">⚡ AI Analysis</strong></div>');
+  document.getElementById('picks-bar').style.display='none';
+  document.getElementById('sim-btn').disabled=false;
+  document.getElementById('analyze-btn').disabled=false;
+  document.getElementById('analysis-status').textContent='';
+  document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
+  const ai=document.querySelector(`.race-item[data-key="${key}"]`);
+  if (ai) ai.classList.add('active');
+  if (currentTab==='field') loadField(key);
 }
 
-// ── TAB SWITCHING ──────────────────────────────────────────────────────────
+// FIELD TABLE
+function loadField(key) {
+  if (!uploadId || !key) return;
+  const content=document.getElementById('left-content');
+  content.innerHTML='<div class="empty"><span class="spinner"></span></div>';
+  fetch(`/field?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(key)}`)
+    .then(r=>r.json()).then(data=>{
+      if (data.error) { content.innerHTML=`<div class="empty">${data.error}</div>`; return; }
+      renderFieldTable(data.horses);
+    }).catch(()=>{ content.innerHTML='<div class="empty">Could not load field.</div>'; });
+}
+
+function renderFieldTable(horses) {
+  const styleMap = {'E':'E','EP':'EP','P':'P','PS':'P','S':'S','SS':'S'};
+  let html='<div class="field-hint">Click horse to highlight · Run Simulation for probabilities</div>';
+  html+='<table class="ftable"><thead><tr>';
+  html+='<th>PP</th><th>Horse</th><th>ML</th><th>Prime Pwr</th><th>Spd L3</th><th>E1</th><th>LP</th><th>Style</th>';
+  html+='</tr></thead><tbody>';
+  horses.forEach(h=>{
+    const s=styleMap[h.style]||'P';
+    html+=`<tr onclick="highlightHorse(this)">
+      <td class="td-pp">${h.pp}</td>
+      <td class="td-horse">${h.horse}</td>
+      <td class="td-ml">${h.ml}</td>
+      <td class="td-fig" style="color:var(--gold2)">${h.prime_power||'--'}</td>
+      <td class="td-fig">${h.spd_last3}</td>
+      <td class="td-fig">${h.e1_last3}</td>
+      <td class="td-fig">${h.lp_last3}</td>
+      <td><span class="style-badge s-${s}">${h.style||'?'}</span></td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById('left-content').innerHTML=html;
+}
+
+function highlightHorse(row) {
+  document.querySelectorAll('.ftable tbody tr').forEach(r=>r.classList.remove('sel'));
+  row.classList.add('sel');
+}
+
+// TAB SWITCHING
 function switchTab(tab) {
-  currentTab = tab;
-  document.getElementById('tab-field').className = 'tab' + (tab === 'field' ? ' active' : '');
-  document.getElementById('tab-races').className = 'tab' + (tab === 'races' ? ' active' : '');
-
-  if (tab === 'races') {
-    renderRaceList(Object.values(races));
-  } else {
-    renderFieldPlaceholder();
-  }
-}
-
-function renderFieldPlaceholder() {
-  const content = document.getElementById('panel-content');
-  if (!currentKey) {
-    content.innerHTML = '<div class="empty-state"><div class="empty-icon">🏇</div><div>Load a Brisnet PP file<br>to see the field</div></div>';
-    return;
-  }
-  const r = races[currentKey];
-  if (!r) return;
-
-  // Show basic race info; full horse data is on server, not sent to browser
-  content.innerHTML = `
-    <div class="field-hint">
-      <strong style="color:var(--gold2)">Race ${r.race_num}</strong> · ${r.distance} ${r.surface || ''} · ${r.race_class}<br>
-      ${r.num_horses} horses · Click <em>Analyze Race</em> for full AI handicapping
-    </div>
-    <div style="padding:1rem;color:var(--muted);font-size:0.8rem;line-height:1.8;">
-      Horse data is parsed server-side from your Brisnet file.<br><br>
-      Full pace figures, Prime Power ratings, speed figures, and past performances are included in the AI analysis.
-    </div>
-  `;
+  currentTab=tab;
+  document.getElementById('tab-field').className='ptab'+(tab==='field'?' active':'');
+  document.getElementById('tab-races').className='ptab'+(tab==='races'?' active':'');
+  if (tab==='races') renderRaceList(Object.values(races));
+  else if (currentKey) loadField(currentKey);
+  else document.getElementById('left-content').innerHTML='<div class="empty"><div class="empty-icon">🏇</div><div>Load a card to see the field</div></div>';
 }
 
 function renderRaceList(raceList) {
-  const content = document.getElementById('panel-content');
-  if (!raceList || raceList.length === 0) {
-    content.innerHTML = '<div class="empty-state"><div class="empty-icon">🏁</div><div>No races loaded</div></div>';
-    return;
-  }
-
-  let html = '<div class="race-list">';
-  raceList.forEach(r => {
-    const active = r.key === currentKey ? ' active' : '';
-    const surf = r.surface ? ' · ' + r.surface : '';
-    html += `
-      <div class="race-item${active}" data-key="${r.key}" onclick="selectRace('${r.key}')">
-        <div class="race-num-badge">R${r.race_num}</div>
-        <div class="race-meta">
-          ${r.distance}${surf}<br>
-          <span class="race-meta-sub">${r.race_class} · ${r.num_horses} horses</span>
-        </div>
-      </div>`;
+  if (!raceList||raceList.length===0) { document.getElementById('left-content').innerHTML='<div class="empty"><div class="empty-icon">🏁</div><div>No races loaded</div></div>'; return; }
+  let html='<div class="race-list">';
+  raceList.forEach(r=>{
+    const active=r.key===currentKey?' active':'';
+    const surf=r.surface?' · '+r.surface:'';
+    html+=`<div class="race-item${active}" data-key="${r.key}" onclick="selectRace('${r.key}')">
+      <div class="r-badge">R${r.race_num}</div>
+      <div class="r-meta">${r.distance}${surf}<br><span class="r-sub">${r.race_class} · ${r.num_horses} horses</span></div>
+    </div>`;
   });
-  html += '</div>';
-  content.innerHTML = html;
+  html+='</div>';
+  document.getElementById('left-content').innerHTML=html;
 }
 
-// ── ANALYZE ────────────────────────────────────────────────────────────────
-function doAnalyze() {
-  if (!uploadId || !currentKey || analyzing) return;
-
-  analyzing = true;
-  document.getElementById('analyze-btn').disabled = true;
-  document.getElementById('analysis-status').innerHTML = '<span class="spinner"></span> Analyzing…';
-  document.getElementById('picks-bar').style.display = 'none';
-  document.getElementById('analysis-output').textContent = '';
-  hideError();
-
-  const url = `/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`;
-  const es  = new EventSource(url);
-  let outputEl = document.getElementById('analysis-output');
-
-  es.onmessage = function(e) {
-    try {
-      const msg = JSON.parse(e.data);
-
-      if (msg.text) {
-        outputEl.textContent += msg.text;
-        outputEl.scrollTop = outputEl.scrollHeight;
-      }
-
-      if (msg.picks) {
-        const bar = document.getElementById('picks-bar');
-        const p = msg.picks;
-        if (p.win && p.win.pp) {
-          document.getElementById('pick-win-name').textContent = `#${p.win.pp} ${p.win.name}`;
-          document.getElementById('pick-win-odds').textContent = p.win.odds ? `(${p.win.odds})` : '';
-          document.getElementById('pick-win').style.display = 'flex';
-        }
-        if (p.place && p.place.pp) {
-          document.getElementById('pick-place-name').textContent = `#${p.place.pp} ${p.place.name}`;
-          document.getElementById('pick-place-odds').textContent = p.place.odds ? `(${p.place.odds})` : '';
-          document.getElementById('pick-place').style.display = 'flex';
-        }
-        if (p.show && p.show.pp) {
-          document.getElementById('pick-show-name').textContent = `#${p.show.pp} ${p.show.name}`;
-          document.getElementById('pick-show-odds').textContent = p.show.odds ? `(${p.show.odds})` : '';
-          document.getElementById('pick-show').style.display = 'flex';
-        }
-        if (p.exacta) {
-          document.getElementById('pick-exacta-val').textContent = p.exacta;
-          document.getElementById('pick-exacta').style.display = 'flex';
-        }
-        if (p.trifecta) {
-          document.getElementById('pick-trifecta-val').textContent = p.trifecta;
-          document.getElementById('pick-trifecta').style.display = 'flex';
-        }
-        bar.style.display = 'flex';
-      }
-
-      if (msg.error) {
-        showError('Analysis error: ' + msg.error);
-        es.close();
-        doneAnalyzing();
-      }
-
-      if (msg.done) {
-        es.close();
-        doneAnalyzing();
-      }
-    } catch(err) {
-      // non-JSON line, ignore
-    }
-  };
-
-  es.onerror = function() {
-    if (analyzing) {
-      // EventSource fires onerror when server closes connection normally too
-      // Only show error if we haven't received any content yet
-      const output = document.getElementById('analysis-output');
-      const hasContent = output && output.textContent && output.textContent.trim().length > 50;
-      if (!hasContent) {
-        showError('Connection lost. Please try again.');
-      }
-      es.close();
-      doneAnalyzing();
-    }
-  };
-}
-
-function doneAnalyzing() {
-  analyzing = false;
-  document.getElementById('analyze-btn').disabled = false;
-  document.getElementById('analysis-status').textContent = '';
-}
-
-
-// ── SAMPLE CARDS ──────────────────────────────────────────────────────────
-function loadSample(cardId) {
-  if (!cardId) return;
-  document.getElementById('sample-select').value = '';
-  document.getElementById('analysis-output').innerHTML =
-    '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Loading card…</div>';
-  hideError();
-
-  fetch(`/load_sample?card=${encodeURIComponent(cardId)}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) { showError(data.error); return; }
-      uploadId = data.upload_id;
-      races = {};
-      data.races.forEach(r => { races[r.key] = r; });
-      populateRaceDropdown(data.races);
-      document.getElementById('track-name').textContent = data.label || cardId;
-      document.getElementById('analysis-output').innerHTML =
-        '<div class="analysis-placeholder" style="text-align:center;color:var(--muted);margin-top:3rem;">' +
-        'Select a race and click <strong style="color:var(--gold)">⚡ Analyze Race</strong></div>';
-      if (data.races.length > 0) selectRace(data.races[0].key);
-    })
-    .catch(err => showError('Could not load sample: ' + err.message));
-}
-
-function initSampleCards() {
-  fetch('/sample_cards')
-    .then(r => r.json())
-    .then(data => {
-      const sel = document.getElementById('sample-select');
-      data.cards.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.label;
-        sel.appendChild(opt);
-      });
-    })
-    .catch(() => {});
-}
-
-// ── SIMULATOR ─────────────────────────────────────────────────────────────
+// SIMULATION
 function doSimulate() {
-  if (!uploadId || !currentKey) return;
-
-  const btn = document.getElementById('sim-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Simulating…';
+  if (!uploadId||!currentKey) return;
+  const btn=document.getElementById('sim-btn');
+  btn.disabled=true; btn.textContent='⏳ Simulating…';
   hideError();
-
-  document.getElementById('analysis-output').innerHTML =
-    '<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Running 2,000 simulations…</div>';
-  document.getElementById('picks-bar').style.display = 'none';
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Running 2,000 simulations…</div>');
+  document.getElementById('picks-bar').style.display='none';
 
   fetch(`/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`)
-    .then(r => r.json())
-    .then(data => {
-      btn.disabled = false;
-      btn.textContent = '🎲 Simulate';
-
+    .then(r=>r.json()).then(data=>{
+      btn.disabled=false; btn.textContent='🎲 Run Simulation';
       if (data.error) { showError(data.error); return; }
+      simData=data;
+      renderSimResults(data);
+    }).catch(err=>{ btn.disabled=false; btn.textContent='🎲 Run Simulation'; showError('Simulation failed: '+err.message); });
+}
 
-      const rows = data.rows || [];
-      let html = '<div style="padding:1rem 1.5rem;">';
-      html += '<div style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.8rem;">Monte Carlo Simulation — 2,000 Races</div>';
-      html += '<table class="sim-table"><thead><tr>';
-      html += '<th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th><th>EV Signal</th>';
-      html += '</tr></thead><tbody>';
+function renderSimResults(data) {
+  const rows=data.rows||[];
+  let html='<div class="sim-wrap">';
+  html+='<div class="sim-title">Monte Carlo Simulation — 2,000 Races</div>';
+  html+='<table class="sim-table"><thead><tr><th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th><th>EV Signal</th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{
+    const evCls=r.ev_color==='positive'?'ev-pos':r.ev_color==='negative'?'ev-neg':'ev-neu';
+    const medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
+    html+=`<tr>
+      <td style="color:var(--gold);font-weight:bold;font-family:var(--mono)">${r.program_num}</td>
+      <td style="color:#fff;font-weight:${i<3?'bold':'normal'}">${medal}${r.horse_name}</td>
+      <td style="color:var(--gold2);font-weight:bold;font-family:var(--mono)">${r.win_prob_pct}</td>
+      <td style="font-family:var(--mono)">${r.fair_odds}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${r.morning_line}</td>
+      <td class="${evCls}">${r.ev_label}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  if (data.pace_advantage||data.key_factor) {
+    html+='<div class="sim-meta">';
+    if (data.pace_advantage) html+=`<strong style="color:var(--gold)">Pace Advantage:</strong> ${data.pace_advantage}<br>`;
+    if (data.key_factor) html+=`<strong style="color:var(--gold)">Key Factor:</strong> ${data.key_factor}`;
+    html+='</div>';
+  }
+  html+='</div>';
+  setOutput(html);
+}
 
-      rows.forEach((r, i) => {
-        const evClass = r.ev_color === 'positive' ? 'ev-positive' : r.ev_color === 'negative' ? 'ev-negative' : 'ev-neutral';
-        const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '';
-        html += `<tr>
-          <td style="color:var(--gold);font-weight:bold;">${r.program_num}</td>
-          <td style="color:#fff;font-weight:${i<3?'bold':'normal'}">${medal}${r.horse_name}</td>
-          <td style="color:var(--gold2);font-weight:bold;">${r.win_prob_pct}</td>
-          <td style="font-family:monospace;">${r.fair_odds}</td>
-          <td style="font-family:monospace;color:var(--muted);">${r.morning_line}</td>
-          <td class="${evClass}">${r.ev_label}</td>
-        </tr>`;
-      });
+// AI ANALYSIS
+function doAnalyze() {
+  if (!uploadId||!currentKey||analyzing) return;
+  analyzing=true;
+  document.getElementById('analyze-btn').disabled=true;
+  document.getElementById('analysis-status').innerHTML='<span class="spinner"></span> Analyzing…';
+  document.getElementById('picks-bar').style.display='none';
+  setOutput('');
+  hideError();
 
-      html += '</tbody></table>';
+  const url=`/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`;
+  const es=new EventSource(url);
+  const out=document.getElementById('analysis-output');
 
-      if (data.pace_advantage || data.key_factor) {
-        html += '<div class="sim-meta">';
-        if (data.pace_advantage) html += `<strong style="color:var(--gold)">Pace:</strong> ${data.pace_advantage}<br>`;
-        if (data.key_factor) html += `<strong style="color:var(--gold)">Key Factor:</strong> ${data.key_factor}`;
-        html += '</div>';
+  es.onmessage=function(e) {
+    try {
+      const msg=JSON.parse(e.data);
+      if (msg.ping) return;
+      if (msg.text) { out.textContent+=msg.text; out.scrollTop=out.scrollHeight; }
+      if (msg.picks) {
+        const p=msg.picks, bar=document.getElementById('picks-bar');
+        if (p.win&&p.win.pp) { document.getElementById('pick-win-name').textContent=`#${p.win.pp} ${p.win.name}`; document.getElementById('pick-win-odds').textContent=p.win.odds?`(${p.win.odds})`:''; document.getElementById('pick-win').style.display='flex'; }
+        if (p.place&&p.place.pp) { document.getElementById('pick-place-name').textContent=`#${p.place.pp} ${p.place.name}`; document.getElementById('pick-place-odds').textContent=p.place.odds?`(${p.place.odds})`:''; document.getElementById('pick-place').style.display='flex'; }
+        if (p.show&&p.show.pp) { document.getElementById('pick-show-name').textContent=`#${p.show.pp} ${p.show.name}`; document.getElementById('pick-show-odds').textContent=p.show.odds?`(${p.show.odds})`:''; document.getElementById('pick-show').style.display='flex'; }
+        if (p.exacta) { document.getElementById('pick-exacta-val').textContent=p.exacta; document.getElementById('pick-exacta').style.display='flex'; }
+        if (p.trifecta) { document.getElementById('pick-trifecta-val').textContent=p.trifecta; document.getElementById('pick-trifecta').style.display='flex'; }
+        bar.style.display='flex';
       }
+      if (msg.error) { showError('Analysis error: '+msg.error); es.close(); doneAnalyzing(); }
+      if (msg.done) { es.close(); doneAnalyzing(); }
+    } catch(err) {}
+  };
 
-      html += '</div>';
-      document.getElementById('analysis-output').innerHTML = html;
-    })
-    .catch(err => {
-      btn.disabled = false;
-      btn.textContent = '🎲 Simulate';
-      showError('Simulation failed: ' + err.message);
-    });
+  es.onerror=function() {
+    if (analyzing) {
+      const out=document.getElementById('analysis-output');
+      if (!out.textContent||out.textContent.trim().length<50) showError('Connection lost. Please try again.');
+      es.close(); doneAnalyzing();
+    }
+  };
 }
 
-// ── ERROR BAR ──────────────────────────────────────────────────────────────
-function showError(msg) {
-  const el = document.getElementById('error-bar');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function hideError() {
-  document.getElementById('error-bar').style.display = 'none';
-}
+function doneAnalyzing() { analyzing=false; document.getElementById('analyze-btn').disabled=false; document.getElementById('analysis-status').textContent=''; }
+function setOutput(html) { document.getElementById('analysis-output').innerHTML=html; }
+function showError(msg) { const el=document.getElementById('error-bar'); el.textContent=msg; el.style.display='block'; }
+function hideError() { document.getElementById('error-bar').style.display='none'; }
 </script>
 </body>
 </html>

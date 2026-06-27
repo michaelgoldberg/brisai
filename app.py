@@ -183,6 +183,45 @@ def load_sample():
 
 
 
+
+@app.route("/field")
+def field():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race   = races[race_key]
+    horses = race.get("horses", [])
+
+    field = []
+    for h in horses:
+        pr = h.get("past_races", [])
+        last3_spd = [p.get("bris_speed") for p in pr[:3] if p.get("bris_speed")]
+        last3_e1  = [p.get("e1_pace")    for p in pr[:3] if p.get("e1_pace")]
+        last3_lp  = [p.get("late_pace")  for p in pr[:3] if p.get("late_pace")]
+        field.append({
+            "pp":          h.get("program_num", ""),
+            "horse":       h.get("horse_name", ""),
+            "jockey":      h.get("jockey", ""),
+            "trainer":     h.get("trainer", ""),
+            "ml":          h.get("morning_line", ""),
+            "prime_power": h.get("prime_power", ""),
+            "avg_speed":   h.get("avg_speed", ""),
+            "best_speed":  h.get("best_speed", ""),
+            "style":       h.get("bris_run_style", ""),
+            "spd_last3":   "/".join(str(s) for s in last3_spd) if last3_spd else "--",
+            "e1_last3":    "/".join(str(s) for s in last3_e1)  if last3_e1  else "--",
+            "lp_last3":    "/".join(str(s) for s in last3_lp)  if last3_lp  else "--",
+        })
+
+    return jsonify({"horses": field})
+
+
 @app.route("/simulate")
 def simulate():
     upload_id = request.args.get("upload_id", "")
