@@ -166,6 +166,8 @@ def analyze():
     })
 
     def generate():
+        # Send immediate keepalive so Railway doesn't close the connection
+        yield f"data: {json.dumps({'ping': True})}\n\n"
         client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         try:
             with client.messages.stream(
@@ -174,12 +176,33 @@ def analyze():
                 messages=[{"role": "user", "content": prompt}],
             ) as stream:
                 for text in stream.text_stream:
+                    full_analysis.append(text)
                     yield f"data: {json.dumps({'text': text})}\n\n"
+
+            analysis_text = "".join(full_analysis)
+            win_pick, place_pick = _extract_picks(analysis_text)
+            if win_pick["pp"] and place_pick["pp"]:
+                if upload_id not in pick_store:
+                    pick_store[upload_id] = {}
+                pick_store[upload_id][str(race_num)] = {
+                    "win_pp":     win_pick["pp"],
+                    "win_name":   win_pick["name"],
+                    "win_odds":   win_pick["odds"],
+                    "place_pp":   place_pick["pp"],
+                    "place_name": place_pick["name"],
+                    "place_odds": place_pick["odds"],
+                }
+                yield f"data: {json.dumps({'picks': {'win': win_pick, 'place': place_pick}})}\n\n"
+
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-    return Response(generate(), mimetype="text/event-stream")
+    resp = Response(generate(), mimetype="text/event-stream")
+    resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Connection"] = "keep-alive"
+    return resp
 
 
 def _at_headers():
@@ -222,3 +245,63 @@ def _err_stream(msg):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
+# ── SAMPLE CARDS ─────────────────────────────────────────────────────────────
+
+SAMPLE_CARDS = {
+    "CDX0627": {"label": "Churchill Downs — Sat Jun 27 (12 races, incl. S. Foster G1)", "file": "CDX0627.DRF"},
+    "BAQ0627": {"label": "Aqueduct — Sat Jun 27 (11 races)",                             "file": "BAQ0627.DRF"},
+    "CDX0628": {"label": "Churchill Downs — Sun Jun 28 (11 races, incl. Maxfield G3)",   "file": "CDX0628.DRF"},
+    "BAQ0628": {"label": "Aqueduct — Sun Jun 28 (9 races)",                               "file": "BAQ0628.DRF"},
+}
+
+SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample_cards")
+
+
+@app.route("/sample_cards")
+def list_sample_cards():
+    return jsonify({"cards": [{"id": k, "label": v["label"]} for k, v in SAMPLE_CARDS.items()]})
+
+
+@app.route("/load_sample")
+def load_sample():
+    card_id = request.args.get("card", "")
+    if card_id not in SAMPLE_CARDS:
+        return jsonify({"error": "Unknown sample card."}), 400
+
+    path = os.path.join(SAMPLE_DIR, SAMPLE_CARDS[card_id]["file"])
+    if not os.path.exists(path):
+        return jsonify({"error": "Sample file not found on server."}), 404
+
+    try:
+        races = parse_brisnet_file(path)
+    except Exception as e:
+        return jsonify({"error": f"Could not parse file: {e}"}), 400
+
+    if not races:
+        return jsonify({"error": "No races found in file."}), 400
+
+    upload_id = str(uuid.uuid4())
+    str_races = {}
+    for key, race in races.items():
+        str_key = f"{key[0]}|{key[1]}|{key[2]}" if isinstance(key, tuple) else str(key)
+        str_races[str_key] = race
+    race_store[upload_id] = str_races
+
+    race_list = []
+    for str_key, race in str_races.items():
+        ri = race.get("race_info", {})
+        race_num = ri.get("race_num") or race.get("race_num", "")
+        if not race_num and "|" in str_key:
+            race_num = str_key.split("|")[2]
+        race_list.append({
+            "key":        str_key,
+            "race_num":   race_num,
+            "distance":   ri.get("distance") or race.get("distance", ""),
+            "surface":    ri.get("surface") or race.get("surface", ""),
+            "race_class": ri.get("race_class") or race.get("race_class", ""),
+            "num_horses": len(race.get("horses", [])),
+        })
+
+    race_list.sort(key=lambda r: int(str(r["race_num"])) if str(r["race_num"]).isdigit() else 0)
+    return jsonify({"upload_id": upload_id, "races": race_list, "label": SAMPLE_CARDS[card_id]["label"]})
