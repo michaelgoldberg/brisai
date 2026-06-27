@@ -233,7 +233,15 @@ def simulate():
     if race_key not in races:
         return jsonify({"error": "Race not found."}), 400
 
-    race   = races[race_key]
+    race     = races[race_key]
+    scratched = [s.strip() for s in request.args.get("scratched", "").split(",") if s.strip()]
+
+    # Filter out scratched horses
+    if scratched:
+        import copy
+        race = copy.deepcopy(race)
+        race["horses"] = [h for h in race.get("horses", []) if str(h.get("program_num","")) not in scratched]
+
     result = run_simulation(race, ANTHROPIC_API_KEY)
     return jsonify(result)
 
@@ -250,7 +258,15 @@ def analyze():
     if race_key not in races:
         return Response(_err_stream("Race not found."), mimetype="text/event-stream")
 
-    race     = races[race_key]
+    race      = races[race_key]
+    scratched = [s.strip() for s in request.args.get("scratched", "").split(",") if s.strip()]
+
+    # Filter out scratched horses
+    if scratched:
+        import copy
+        race = copy.deepcopy(race)
+        race["horses"] = [h for h in race.get("horses", []) if str(h.get("program_num","")) not in scratched]
+
     ri       = race.get("race_info", {})
     sim_data = None
     try:

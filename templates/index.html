@@ -260,6 +260,7 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
 
 <script>
 let uploadId = null, races = {}, currentKey = null, currentTab = 'field';
+let scratched = new Set();
 let selectedFile = null, analyzing = false, simData = null;
 
 // GATE
@@ -349,6 +350,7 @@ function selectRace(key) {
   document.getElementById('race-select').value=key;
   const r=races[key];
   if (r) document.getElementById('analysis-title').textContent=`Race ${r.race_num} · ${r.distance} ${r.surface||''} · ${r.race_class}`;
+  scratched = new Set();
   document.getElementById('picks-bar').style.display='none';
   document.getElementById('sim-btn').disabled=false;
   document.getElementById('analyze-btn').disabled=false;
@@ -429,7 +431,8 @@ function doSimulate() {
   setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Running 2,000 simulations…</div>');
   document.getElementById('picks-bar').style.display='none';
 
-  fetch(`/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`)
+  const scratchedList = Array.from(scratched).join(',');
+  fetch(`/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
     .then(r=>r.json()).then(data=>{
       btn.disabled=false; btn.textContent='🎲 Run Simulation';
       if (data.error) { showError(data.error); return; }
@@ -476,7 +479,8 @@ function doAnalyze() {
   setOutput('');
   hideError();
 
-  const url=`/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`;
+  const scratchList = Array.from(scratched).join(',');
+  const url=`/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchList)}`;
   const es=new EventSource(url);
   const out=document.getElementById('analysis-output');
 
