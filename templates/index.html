@@ -72,14 +72,14 @@ select:focus { border-color:var(--gold); }
 
 /* Field table */
 .field-hint { font-size:0.7rem; color:var(--muted); padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); }
-table.ftable { width:100%; border-collapse:collapse; font-size:0.72rem; }
-table.ftable thead th { background:var(--navy); color:var(--muted); font-size:0.6rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.3rem 0.4rem; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+table.ftable { width:100%; border-collapse:collapse; font-size:0.84rem; }
+table.ftable thead th { background:var(--navy); color:var(--muted); font-size:0.65rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.4rem 0.8rem; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
 table.ftable tbody tr { border-bottom:1px solid rgba(42,61,82,0.5); cursor:pointer; }
 table.ftable tbody tr:hover { background:rgba(201,168,76,0.06); }
 table.ftable tbody tr.sel { background:rgba(201,168,76,0.12); }
-table.ftable td { padding:0.3rem 0.4rem; vertical-align:middle; white-space:nowrap; }
+table.ftable td { padding:0.42rem 0.8rem; vertical-align:middle; white-space:nowrap; }
 .td-pp { font-weight:bold; color:var(--gold2); font-family:var(--mono); }
-.td-horse { font-weight:bold; color:#fff; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+.td-horse { font-weight:bold; color:#fff; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
 .td-fig { font-family:var(--mono); color:var(--muted); }
 .td-ml { font-family:var(--mono); color:var(--text); }
 .style-badge { font-size:0.58rem; padding:0.1rem 0.25rem; border-radius:2px; font-weight:bold; }
@@ -204,11 +204,10 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
     <!-- Left -->
     <div id="left-panel">
       <div class="panel-tabs">
-        <div class="ptab active" id="tab-field" onclick="switchTab('field')">Field</div>
-        <div class="ptab" id="tab-races" onclick="switchTab('races')">Races</div>
+        <div class="ptab active" id="tab-races">Races</div>
       </div>
       <div id="left-content">
-        <div class="empty"><div class="empty-icon">🏇</div><div>Load a card to see the field</div></div>
+        <div class="empty"><div class="empty-icon">🏁</div><div>Load a card to see races</div></div>
       </div>
     </div>
 
@@ -221,8 +220,8 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
       <div id="analysis-output">
         <div class="placeholder">
           <strong>Welcome to TrackIQ</strong>
-          1. Load a Brisnet .DRF file or pick a sample card<br>
-          2. Select a race from the dropdown<br>
+          1. Pick a sample card or load your own .DRF file<br>
+          2. Select a race — the field appears here<br>
           3. Click <strong style="color:var(--gold)">🎲 Run Simulation</strong> for Monte Carlo probabilities<br>
           4. Click <strong style="color:var(--gold)">⚡ AI Analysis</strong> for full handicapping
         </div>
@@ -338,7 +337,7 @@ function loadRaces(uid, raceList, label) {
   });
   const trackName = label || (raceList.length>0 ? raceList[0].key.split('|')[0] : '—');
   document.getElementById('track-name').textContent=trackName;
-  if (currentTab==='races') renderRaceList(raceList);
+  renderRaceList(raceList);
   if (raceList.length>0) selectRace(raceList[0].key);
 }
 
@@ -350,7 +349,6 @@ function selectRace(key) {
   document.getElementById('race-select').value=key;
   const r=races[key];
   if (r) document.getElementById('analysis-title').textContent=`Race ${r.race_num} · ${r.distance} ${r.surface||''} · ${r.race_class}`;
-  setOutput('<div class="placeholder">Click <strong style="color:var(--gold)">🎲 Run Simulation</strong> or <strong style="color:var(--gold)">⚡ AI Analysis</strong></div>');
   document.getElementById('picks-bar').style.display='none';
   document.getElementById('sim-btn').disabled=false;
   document.getElementById('analyze-btn').disabled=false;
@@ -358,19 +356,18 @@ function selectRace(key) {
   document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
   const ai=document.querySelector(`.race-item[data-key="${key}"]`);
   if (ai) ai.classList.add('active');
-  if (currentTab==='field') loadField(key);
+  loadField(key);
 }
 
 // FIELD TABLE
 function loadField(key) {
   if (!uploadId || !key) return;
-  const content=document.getElementById('left-content');
-  content.innerHTML='<div class="empty"><span class="spinner"></span></div>';
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span></div>');
   fetch(`/field?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(key)}`)
     .then(r=>r.json()).then(data=>{
-      if (data.error) { content.innerHTML=`<div class="empty">${data.error}</div>`; return; }
+      if (data.error) { showError(data.error); return; }
       renderFieldTable(data.horses);
-    }).catch(()=>{ content.innerHTML='<div class="empty">Could not load field.</div>'; });
+    }).catch(()=>{ showError('Could not load field.'); });
 }
 
 function renderFieldTable(horses) {
@@ -393,7 +390,8 @@ function renderFieldTable(horses) {
     </tr>`;
   });
   html+='</tbody></table>';
-  document.getElementById('left-content').innerHTML=html;
+  setOutput(html);
+  document.getElementById('analysis-title').textContent = document.getElementById('analysis-title').textContent;
 }
 
 function highlightHorse(row) {
@@ -403,12 +401,8 @@ function highlightHorse(row) {
 
 // TAB SWITCHING
 function switchTab(tab) {
-  currentTab=tab;
-  document.getElementById('tab-field').className='ptab'+(tab==='field'?' active':'');
-  document.getElementById('tab-races').className='ptab'+(tab==='races'?' active':'');
-  if (tab==='races') renderRaceList(Object.values(races));
-  else if (currentKey) loadField(currentKey);
-  else document.getElementById('left-content').innerHTML='<div class="empty"><div class="empty-icon">🏇</div><div>Load a card to see the field</div></div>';
+  currentTab = tab;
+  renderRaceList(Object.values(races));
 }
 
 function renderRaceList(raceList) {
@@ -423,7 +417,8 @@ function renderRaceList(raceList) {
     </div>`;
   });
   html+='</div>';
-  document.getElementById('left-content').innerHTML=html;
+  setOutput(html);
+  document.getElementById('analysis-title').textContent = document.getElementById('analysis-title').textContent;
 }
 
 // SIMULATION
