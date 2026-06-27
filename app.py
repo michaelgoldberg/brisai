@@ -28,7 +28,7 @@ AIRTABLE_RESULTS   = "Results"
 
 TRIAL_DAYS = int(os.environ.get("TRIAL_DAYS", "3"))
 MODEL      = "claude-sonnet-4-6"
-MAX_TOKENS = 2048
+MAX_TOKENS = 4096
 
 race_store = {}
 pick_store = {}
@@ -223,19 +223,19 @@ def analyze():
                     yield f"data: {json.dumps({'text': text})}\n\n"
 
             analysis_text = "".join(full_analysis)
-            win_pick, place_pick = _extract_picks(analysis_text)
-            if win_pick["pp"] and place_pick["pp"]:
+            win_pick, place_pick, show_pick, exacta, trifecta = _extract_picks(analysis_text)
+            if win_pick["pp"]:
                 if upload_id not in pick_store:
                     pick_store[upload_id] = {}
                 pick_store[upload_id][str(race_num)] = {
                     "win_pp":     win_pick["pp"],
                     "win_name":   win_pick["name"],
                     "win_odds":   win_pick["odds"],
-                    "place_pp":   place_pick["pp"],
+                    "place_pp":   place_pick["pp"] if place_pick["pp"] else None,
                     "place_name": place_pick["name"],
                     "place_odds": place_pick["odds"],
                 }
-                yield f"data: {json.dumps({'picks': {'win': win_pick, 'place': place_pick}})}\n\n"
+                yield f"data: {json.dumps({'picks': {'win': win_pick, 'place': place_pick, 'show': show_pick, 'exacta': exacta, 'trifecta': trifecta}})}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"

@@ -754,16 +754,29 @@
         </div>
       </div>
       <div class="picks-bar" id="picks-bar">
-        <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">AI Picks:</span>
+        <span style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;">AI Picks:</span>
         <div class="pick-item" id="pick-win" style="display:none">
-          <span class="pick-label">Win</span>
+          <span class="pick-label">WIN</span>
           <span class="pick-horse" id="pick-win-name"></span>
           <span class="pick-odds" id="pick-win-odds"></span>
         </div>
         <div class="pick-item" id="pick-place" style="display:none">
-          <span class="pick-label">Place</span>
+          <span class="pick-label">PLACE</span>
           <span class="pick-horse" id="pick-place-name"></span>
           <span class="pick-odds" id="pick-place-odds"></span>
+        </div>
+        <div class="pick-item" id="pick-show" style="display:none">
+          <span class="pick-label">SHOW</span>
+          <span class="pick-horse" id="pick-show-name"></span>
+          <span class="pick-odds" id="pick-show-odds"></span>
+        </div>
+        <div class="pick-item" id="pick-exacta" style="display:none">
+          <span class="pick-label">EXACTA</span>
+          <span class="pick-horse" id="pick-exacta-val"></span>
+        </div>
+        <div class="pick-item" id="pick-trifecta" style="display:none">
+          <span class="pick-label">TRIFECTA</span>
+          <span class="pick-horse" id="pick-trifecta-val"></span>
         </div>
       </div>
     </div>
@@ -1094,15 +1107,29 @@ function doAnalyze() {
 
       if (msg.picks) {
         const bar = document.getElementById('picks-bar');
-        if (msg.picks.win && msg.picks.win.pp) {
-          document.getElementById('pick-win-name').textContent = `#${msg.picks.win.pp} ${msg.picks.win.name}`;
-          document.getElementById('pick-win-odds').textContent = msg.picks.win.odds ? `(${msg.picks.win.odds})` : '';
+        const p = msg.picks;
+        if (p.win && p.win.pp) {
+          document.getElementById('pick-win-name').textContent = `#${p.win.pp} ${p.win.name}`;
+          document.getElementById('pick-win-odds').textContent = p.win.odds ? `(${p.win.odds})` : '';
           document.getElementById('pick-win').style.display = 'flex';
         }
-        if (msg.picks.place && msg.picks.place.pp) {
-          document.getElementById('pick-place-name').textContent = `#${msg.picks.place.pp} ${msg.picks.place.name}`;
-          document.getElementById('pick-place-odds').textContent = msg.picks.place.odds ? `(${msg.picks.place.odds})` : '';
+        if (p.place && p.place.pp) {
+          document.getElementById('pick-place-name').textContent = `#${p.place.pp} ${p.place.name}`;
+          document.getElementById('pick-place-odds').textContent = p.place.odds ? `(${p.place.odds})` : '';
           document.getElementById('pick-place').style.display = 'flex';
+        }
+        if (p.show && p.show.pp) {
+          document.getElementById('pick-show-name').textContent = `#${p.show.pp} ${p.show.name}`;
+          document.getElementById('pick-show-odds').textContent = p.show.odds ? `(${p.show.odds})` : '';
+          document.getElementById('pick-show').style.display = 'flex';
+        }
+        if (p.exacta) {
+          document.getElementById('pick-exacta-val').textContent = p.exacta;
+          document.getElementById('pick-exacta').style.display = 'flex';
+        }
+        if (p.trifecta) {
+          document.getElementById('pick-trifecta-val').textContent = p.trifecta;
+          document.getElementById('pick-trifecta').style.display = 'flex';
         }
         bar.style.display = 'flex';
       }

@@ -251,16 +251,20 @@ def build_claude_prompt(race_data):
 
     lines += [
         "\n== ANALYSIS REQUEST ==",
-        "Please provide a structured handicapping analysis covering:\n"
-        "1. PACE SCENARIO: How the early pace is likely to unfold given the running styles.\n"
-        "2. SPEED FIGURE ANALYSIS: Which horses have the strongest figures and consistency.\n"
-        "3. CLASS ANALYSIS: Note any significant class drops, rises, or mismatches.\n"
-        "4. PRIME POWER RANKINGS: Which horses rate highest and what it suggests.\n"
-        "5. PACE ADVANTAGE: Which running style(s) benefit most from today's pace scenario.\n"
-        "6. HORSES TO WATCH: 2-3 horses whose profiles fit the shape of this race best.\n"
-        "7. TRAINER / JOCKEY NOTES: Flag any standout connections worth noting.\n"
-        "\nBe analytical and specific. Avoid vague statements. "
-        "If data is missing for a horse, note it rather than speculating."
+        "Provide a concise structured handicapping analysis. Be specific, avoid fluff.\n",
+        "1. PACE SCENARIO: How early pace unfolds given running styles.",
+        "2. SPEED FIGURES: Strongest figures and consistency.",
+        "3. CLASS ANALYSIS: Class drops, rises, or mismatches.",
+        "4. PRIME POWER: Top-rated horses and what it suggests.",
+        "5. KEY HORSES: 2-3 horses whose profile fits this race best.",
+        "\nThen end with EXACTLY this format (required):",
+        "\n=== PICKS ===",
+        "WIN PICK: PP[#] [Horse Name] (ML [odds])",
+        "PLACE PICK: PP[#] [Horse Name] (ML [odds])",
+        "SHOW PICK: PP[#] [Horse Name] (ML [odds])",
+        "EXACTA: PP[#]-PP[#]",
+        "TRIFECTA: PP[#]-PP[#]-PP[#]",
+        "\nFill in the brackets with actual values from the race data.",
     ]
 
     return "\n".join(lines)
