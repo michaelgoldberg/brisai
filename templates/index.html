@@ -1124,7 +1124,13 @@ function doAnalyze() {
 
   es.onerror = function() {
     if (analyzing) {
-      showError('Connection lost. Please try again.');
+      // EventSource fires onerror when server closes connection normally too
+      // Only show error if we haven't received any content yet
+      const output = document.getElementById('analysis-output');
+      const hasContent = output && output.textContent && output.textContent.trim().length > 50;
+      if (!hasContent) {
+        showError('Connection lost. Please try again.');
+      }
       es.close();
       doneAnalyzing();
     }
