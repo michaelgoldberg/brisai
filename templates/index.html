@@ -254,6 +254,22 @@
 
   .btn-upload:hover { background: rgba(201,168,76,0.15); }
 
+  .btn-sim {
+    background: var(--slate2);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 0.38rem 1rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .btn-sim:hover { background: rgba(201,168,76,0.15); }
+  .btn-sim:disabled { opacity: 0.4; cursor: not-allowed; }
+
   .btn-analyze {
     background: var(--gold);
     border: none;
@@ -645,6 +661,16 @@
 
   .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
 
+  /* Sim table */
+  .sim-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 1rem; }
+  .sim-table th { background: var(--navy); color: var(--muted); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
+  .sim-table td { padding: 0.4rem 0.6rem; border-bottom: 1px solid rgba(42,61,82,0.4); }
+  .sim-table tr:hover td { background: rgba(201,168,76,0.05); }
+  .ev-positive { color: var(--green); font-weight: bold; }
+  .ev-negative { color: var(--red); }
+  .ev-neutral  { color: var(--muted); }
+  .sim-meta { font-size: 0.8rem; color: var(--text); margin-top: 1rem; padding: 0.6rem; background: var(--slate2); border-radius: var(--radius); line-height: 1.6; }
+
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: var(--navy); }
@@ -715,6 +741,7 @@
       <select id="sample-select" onchange="loadSample(this.value)" style="max-width:260px;">
         <option value="">— or pick a sample card —</option>
       </select>
+      <button class="btn-sim" id="sim-btn" onclick="doSimulate()" disabled>🎲 Simulate</button>
       <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ Analyze Race</button>
     </div>
   </div>
@@ -1011,6 +1038,7 @@ function selectRace(key) {
     'Click <strong style="color:var(--gold)">⚡ Analyze Race</strong> to run AI handicapping on this race.</div>';
   document.getElementById('picks-bar').style.display = 'none';
   document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('sim-btn').disabled = false;
   document.getElementById('analysis-status').textContent = '';
 
   // Highlight active race in list
@@ -1209,6 +1237,66 @@ function initSampleCards() {
       });
     })
     .catch(() => {});
+}
+
+// ── SIMULATOR ─────────────────────────────────────────────────────────────
+function doSimulate() {
+  if (!uploadId || !currentKey) return;
+
+  const btn = document.getElementById('sim-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Simulating…';
+  hideError();
+
+  document.getElementById('analysis-output').innerHTML =
+    '<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Running 2,000 simulations…</div>';
+  document.getElementById('picks-bar').style.display = 'none';
+
+  fetch(`/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}`)
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.textContent = '🎲 Simulate';
+
+      if (data.error) { showError(data.error); return; }
+
+      const rows = data.rows || [];
+      let html = '<div style="padding:1rem 1.5rem;">';
+      html += '<div style="font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.8rem;">Monte Carlo Simulation — 2,000 Races</div>';
+      html += '<table class="sim-table"><thead><tr>';
+      html += '<th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th><th>EV Signal</th>';
+      html += '</tr></thead><tbody>';
+
+      rows.forEach((r, i) => {
+        const evClass = r.ev_color === 'positive' ? 'ev-positive' : r.ev_color === 'negative' ? 'ev-negative' : 'ev-neutral';
+        const medal = i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : '';
+        html += `<tr>
+          <td style="color:var(--gold);font-weight:bold;">${r.program_num}</td>
+          <td style="color:#fff;font-weight:${i<3?'bold':'normal'}">${medal}${r.horse_name}</td>
+          <td style="color:var(--gold2);font-weight:bold;">${r.win_prob_pct}</td>
+          <td style="font-family:monospace;">${r.fair_odds}</td>
+          <td style="font-family:monospace;color:var(--muted);">${r.morning_line}</td>
+          <td class="${evClass}">${r.ev_label}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+
+      if (data.pace_advantage || data.key_factor) {
+        html += '<div class="sim-meta">';
+        if (data.pace_advantage) html += `<strong style="color:var(--gold)">Pace:</strong> ${data.pace_advantage}<br>`;
+        if (data.key_factor) html += `<strong style="color:var(--gold)">Key Factor:</strong> ${data.key_factor}`;
+        html += '</div>';
+      }
+
+      html += '</div>';
+      document.getElementById('analysis-output').innerHTML = html;
+    })
+    .catch(err => {
+      btn.disabled = false;
+      btn.textContent = '🎲 Simulate';
+      showError('Simulation failed: ' + err.message);
+    });
 }
 
 // ── ERROR BAR ──────────────────────────────────────────────────────────────

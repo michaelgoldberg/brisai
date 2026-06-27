@@ -13,6 +13,7 @@ from flask import Flask, render_template, request, jsonify, Response, session
 
 import anthropic
 from brisnet_parser import parse_brisnet_file, build_claude_prompt
+from simulate import run_simulation
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,23 @@ def load_sample():
     return jsonify({"upload_id": upload_id, "races": race_list, "label": SAMPLE_CARDS[card_id]["label"]})
 
 
+
+@app.route("/simulate")
+def simulate():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired. Please re-upload your file."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race   = races[race_key]
+    result = run_simulation(race, ANTHROPIC_API_KEY)
+    return jsonify(result)
+
+
 @app.route("/analyze")
 def analyze():
     upload_id = request.args.get("upload_id", "")
@@ -195,7 +213,12 @@ def analyze():
 
     race     = races[race_key]
     ri       = race.get("race_info", {})
-    prompt   = build_claude_prompt(race)
+    sim_data = None
+    try:
+        sim_data = run_simulation(race, ANTHROPIC_API_KEY)
+    except Exception:
+        pass
+    prompt   = build_claude_prompt(race, sim_data=sim_data)
     email    = session.get("email", "unknown")
     race_num = ri.get("race_num") or race.get("race_num", "")
     track    = ri.get("track")    or race.get("track", "")

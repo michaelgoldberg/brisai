@@ -200,7 +200,7 @@ def build_race_label(race_key, race_info):
             f"{race_info['distance']} {race_info['surface']} {race_info['race_class']}")
 
 
-def build_claude_prompt(race_data):
+def build_claude_prompt(race_data, sim_data=None):
     info     = race_data["race_info"]
     horses   = race_data["horses"]
     pressure = race_data.get("pace_pressure", "Unknown")
@@ -249,9 +249,25 @@ def build_claude_prompt(race_data):
         else:
             lines.append("  Recent Starts: None / First-timer")
 
+    # Add sim results if available
+    if sim_data and not sim_data.get("error") and sim_data.get("rows"):
+        lines.append("\n== SIMULATION RESULTS (2,000 runs) ==")
+        lines.append("| # | Horse | Win% | Fair Odds | ML | EV |")
+        lines.append("|---|-------|------|-----------|-----|-----|")
+        for r in sim_data["rows"]:
+            lines.append(
+                f"| {r['program_num']} | {r['horse_name']} | {r['win_prob_pct']} | "
+                f"{r['fair_odds']} | {r['morning_line']} | {r['ev_label']} |"
+            )
+        if sim_data.get("pace_advantage"):
+            lines.append(f"\nPace Advantage: {sim_data['pace_advantage']}")
+        if sim_data.get("key_factor"):
+            lines.append(f"Key Factor: {sim_data['key_factor']}")
+
     lines += [
         "\n== ANALYSIS REQUEST ==",
-        "Be BRIEF and DIRECT. 1-2 sentences max per section. No tables. No bullet lists longer than 3 items.",
+        "Be BRIEF and DIRECT. 1-2 sentences max per section.",
+        "Reference the simulation results above when making your picks.",
         "\n1. PACE: Who controls pace and who benefits.",
         "2. SPEED: Top 3 horses by figures.",
         "3. CLASS: Any notable drops or rises.",
