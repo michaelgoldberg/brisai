@@ -365,12 +365,34 @@ def _calculate_roi(race_result, win_pick_pp, place_pick_pp):
 
 
 def _extract_picks(analysis_text):
-    win_pick={'pp':None,'name':'','odds':''}; place_pick={'pp':None,'name':'','odds':''}
-    win_m=re.search(r'WIN PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)',analysis_text,re.IGNORECASE|re.DOTALL)
-    if win_m: win_pick={'pp':int(win_m.group(1)),'name':win_m.group(2).strip(),'odds':win_m.group(3).strip()}
-    place_m=re.search(r'PLACE PICK.*?PP(\d+)\s+([A-Za-z][A-Za-z\s\']+?)\s*\(ML\s*([\d/-]+)\)',analysis_text,re.IGNORECASE|re.DOTALL)
-    if place_m: place_pick={'pp':int(place_m.group(1)),'name':place_m.group(2).strip(),'odds':place_m.group(3).strip()}
-    return win_pick, place_pick
+    win_pick   = {'pp': None, 'name': '', 'odds': ''}
+    place_pick = {'pp': None, 'name': '', 'odds': ''}
+    show_pick  = {'pp': None, 'name': '', 'odds': ''}
+    exacta     = ''
+    trifecta   = ''
+
+    pat_horse = r'PP(\d+)\s+([A-Za-z][A-Za-z0-9 ]+?)\s*\(ML\s*([\d/-]+)\)'
+    win_m = re.search(r'WIN PICK:\s*' + pat_horse, analysis_text, re.IGNORECASE)
+    if win_m:
+        win_pick = {'pp': int(win_m.group(1)), 'name': win_m.group(2).strip(), 'odds': win_m.group(3).strip()}
+
+    place_m = re.search(r'PLACE PICK:\s*' + pat_horse, analysis_text, re.IGNORECASE)
+    if place_m:
+        place_pick = {'pp': int(place_m.group(1)), 'name': place_m.group(2).strip(), 'odds': place_m.group(3).strip()}
+
+    show_m = re.search(r'SHOW PICK:\s*' + pat_horse, analysis_text, re.IGNORECASE)
+    if show_m:
+        show_pick = {'pp': int(show_m.group(1)), 'name': show_m.group(2).strip(), 'odds': show_m.group(3).strip()}
+
+    ex_m = re.search(r'EXACTA:\s*PP(\d+)-PP(\d+)', analysis_text, re.IGNORECASE)
+    if ex_m:
+        exacta = ex_m.group(1) + '-' + ex_m.group(2)
+
+    tri_m = re.search(r'TRIFECTA:\s*PP(\d+)-PP(\d+)-PP(\d+)', analysis_text, re.IGNORECASE)
+    if tri_m:
+        trifecta = tri_m.group(1) + '-' + tri_m.group(2) + '-' + tri_m.group(3)
+
+    return win_pick, place_pick, show_pick, exacta, trifecta
 
 
 # ── AIRTABLE ──────────────────────────────────────────────────────────────────
