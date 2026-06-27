@@ -251,20 +251,18 @@ def build_claude_prompt(race_data):
 
     lines += [
         "\n== ANALYSIS REQUEST ==",
-        "Provide a concise structured handicapping analysis. Be specific, avoid fluff.\n",
-        "1. PACE SCENARIO: How early pace unfolds given running styles.",
-        "2. SPEED FIGURES: Strongest figures and consistency.",
-        "3. CLASS ANALYSIS: Class drops, rises, or mismatches.",
-        "4. PRIME POWER: Top-rated horses and what it suggests.",
-        "5. KEY HORSES: 2-3 horses whose profile fits this race best.",
-        "\nThen end with EXACTLY this format (required):",
+        "Be BRIEF and DIRECT. 1-2 sentences max per section. No tables. No bullet lists longer than 3 items.",
+        "\n1. PACE: Who controls pace and who benefits.",
+        "2. SPEED: Top 3 horses by figures.",
+        "3. CLASS: Any notable drops or rises.",
+        "4. BEST BET: Your top selection and why in 2 sentences.",
+        "\nThen output EXACTLY this block with no deviations:",
         "\n=== PICKS ===",
         "WIN PICK: PP[#] [Horse Name] (ML [odds])",
         "PLACE PICK: PP[#] [Horse Name] (ML [odds])",
         "SHOW PICK: PP[#] [Horse Name] (ML [odds])",
         "EXACTA: PP[#]-PP[#]",
         "TRIFECTA: PP[#]-PP[#]-PP[#]",
-        "\nFill in the brackets with actual values from the race data.",
     ]
 
     return "\n".join(lines)
