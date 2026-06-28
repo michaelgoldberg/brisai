@@ -35,8 +35,6 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
-    "CDX0627": {"label": "Churchill Downs - Sat Jun 27", "file": "CDX0627.DRF"},
-    "BAQ0627": {"label": "Aqueduct - Sat Jun 27",        "file": "BAQ0627.DRF"},
     "CDX0628": {"label": "Churchill Downs - Sun Jun 28", "file": "CDX0628.DRF"},
     "BAQ0628": {"label": "Aqueduct - Sun Jun 28",        "file": "BAQ0628.DRF"},
 }
