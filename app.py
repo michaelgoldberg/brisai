@@ -257,58 +257,72 @@ def bet_recommendation():
     if race_key not in races:
         return jsonify({"error": "Race not found."}), 400
 
-    race   = races[race_key]
-    horses = race.get("horses", [])
+    from simulate import run_simulation, ml_to_decimal
 
-    try:
-        from simulate import run_simulation, ml_to_decimal
+    def get_top(race, n=4):
         result = run_simulation(race, ANTHROPIC_API_KEY)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        if result.get("error"): return []
+        horses = race.get("horses", [])
+        top = []
+        for r in result["rows"]:
+            h = next((x for x in horses if str(x["program_num"]) == r["program_num"]), None)
+            if not h: continue
+            ml = ml_to_decimal(h.get("morning_line"))
+            wp = r["win_prob_raw"]
+            ev = (wp * (ml + 1) - 1) if ml else 0
+            top.append({"pp": r["program_num"], "name": r["horse_name"],
+                        "win_pct": r["win_prob_pct"], "win_prob": wp,
+                        "fair": r["fair_odds"], "ml": r["morning_line"],
+                        "ml_dec": ml, "ev": ev, "ev_label": r["ev_label"]})
+            if len(top) >= n: break
+        return top
 
-    MIN_EV       = 0.25
-    MAX_RACE_PCT = 0.04
+    race = races[race_key]
+    ri   = race.get("race_info", {})
+    top  = get_top(race)
 
-    def kelly_bet(win_prob, decimal_odds, bankroll):
-        b = decimal_odds
-        q = 1 - win_prob
-        k = max((b * win_prob - q) / b, 0)
-        bet = min(k * 0.5, MAX_RACE_PCT) * bankroll
-        return max(round(bet / 2) * 2, 0)
+    if len(top) < 2:
+        return jsonify({"error": "Not enough horses to build recommendations."}), 400
 
-    bets = []
-    for r in result.get("rows", []):
-        horse = next((h for h in horses if str(h["program_num"]) == r["program_num"]), None)
-        if not horse: continue
-        ml_dec = ml_to_decimal(horse.get("morning_line"))
-        if ml_dec is None or ml_dec < 3.0: continue
+    recs = []
 
-        win_prob = r["win_prob_raw"]
-        ev = (win_prob * (ml_dec + 1)) - 1
-
-        if ev >= MIN_EV:
-            bet = kelly_bet(win_prob, ml_dec, bankroll)
-            if bet >= 2:
-                bets.append({
-                    "pp":       r["program_num"],
-                    "name":     r["horse_name"],
-                    "win_pct":  r["win_prob_pct"],
-                    "fair":     r["fair_odds"],
-                    "ml":       r["morning_line"],
-                    "ev":       f"+{ev*100:.0f}%",
-                    "ev_raw":   ev,
-                    "bet":      bet,
-                    "bet_type": "WIN",
-                })
-
-    # Sort by EV, return top 2
-    bets.sort(key=lambda x: x["ev_raw"], reverse=True)
-
-    return jsonify({
-        "bets":   bets[:2],
-        "action": "BET" if bets else "PASS",
-        "reason": f"{len(bets)} value bet(s) found above 25% EV threshold" if bets else "No value — ML too short or no edge found. Skip this race."
+    # EXACTA: key on top, spread underneath
+    key   = top[0]
+    under = top[1:3]
+    exacta_combos = [{"key_pp": key["pp"], "key_name": key["name"],
+                      "under_pp": u["pp"], "under_name": u["name"], "bet": 4}
+                     for u in under]
+    recs.append({
+        "type":   "EXACTA",
+        "desc":   f"#{key['pp']} {key['name']} on top",
+        "combos": exacta_combos,
+        "total":  len(exacta_combos) * 4,
+        "note":   f"Key #{key['pp']} ({key['win_pct']}) / #{under[0]['pp']} #{under[1]['pp'] if len(under)>1 else ''}"
     })
+
+    # TRIFECTA: key / top3 / top3 part-wheel
+    if len(top) >= 3:
+        under3 = top[1:4]
+        under_pps = "/".join([f"#{h['pp']}" for h in under3])
+        n_combos  = len(under3) * (len(under3) - 1)
+        recs.append({
+            "type":  "TRIFECTA",
+            "desc":  f"#{key['pp']} {key['name']} / {under_pps} / {under_pps}",
+            "total": n_combos,
+            "note":  f"$1 part-wheel — {n_combos} combos"
+        })
+
+    # PICK 3 pointer (using current race as leg 1)
+    rn = ri.get("race_num", "?")
+    recs.append({
+        "type": "PICK 3",
+        "desc": f"Start R{rn} — use top 2 per leg",
+        "total": 4.00,
+        "note": f"#{top[0]['pp']} {top[0]['name']} / #{top[1]['pp']} {top[1]['name']} in R{rn} — run AI Analysis on next 2 races to complete ticket",
+        "legs": [{"race": rn, "horses": [{"pp": h["pp"], "name": h["name"], "win_pct": h["win_pct"]} for h in top[:2]]}]
+    })
+
+    return jsonify({"recs": recs, "race": rn, "key_horse": key})
 
 
 @app.route("/analyze")

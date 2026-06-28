@@ -515,6 +515,66 @@ function doAnalyze() {
 
 function doneAnalyzing() { analyzing=false; document.getElementById('analyze-btn').disabled=false; document.getElementById('analysis-status').textContent=''; }
 function setOutput(html) { document.getElementById('analysis-output').innerHTML=html; }
+function doBet() {
+  if (!uploadId || !currentKey) return;
+  const btn = document.getElementById('bet-btn');
+  btn.disabled = true; btn.textContent = '⏳ Building…';
+  hideError();
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building exotic wager recommendations…</div>');
+
+  fetch(`/bet_recommendation?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&bankroll=1000`)
+    .then(r=>r.json())
+    .then(data=>{
+      btn.disabled=false; btn.textContent='💰 Bet Rec';
+      if (data.error) { showError(data.error); return; }
+
+      const raceTitle = document.getElementById('analysis-title').textContent;
+      let html = '<div style="padding:1.2rem 1.5rem;">';
+      html += `<div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Exotic Wager Recommendations — ${raceTitle}</div>`;
+
+      data.recs.forEach(rec => {
+        html += `<div style="background:var(--slate2);border:1px solid var(--border);border-radius:6px;padding:0.9rem 1.1rem;margin-bottom:0.8rem;">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">`;
+        html += `<span style="font-size:0.75rem;font-weight:bold;letter-spacing:0.12em;color:var(--gold)">${rec.type}</span>`;
+        html += `<span style="background:var(--navy);color:var(--gold2);font-family:monospace;font-size:0.85rem;padding:0.15rem 0.5rem;border-radius:3px;">$${typeof rec.total === 'number' ? rec.total.toFixed(2) : rec.total}</span>`;
+        html += `</div>`;
+        html += `<div style="font-size:0.88rem;color:#fff;margin-bottom:0.3rem;">${rec.desc}</div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);">${rec.note}</div>`;
+        if (rec.combos) {
+          html += `<div style="margin-top:0.6rem;">`;
+          rec.combos.forEach(c => {
+            html += `<div style="font-size:0.78rem;color:var(--text);font-family:monospace;padding:0.15rem 0;">#${c.key_pp}→#${c.under_pp} ${c.under_name} — $${c.bet}</div>`;
+          });
+          html += `</div>`;
+        }
+        if (rec.legs) {
+          html += `<div style="margin-top:0.6rem;">`;
+          rec.legs.forEach(leg => {
+            const horses = leg.horses.map(h => `#${h.pp} ${h.name}`).join(' / ');
+            html += `<div style="font-size:0.78rem;color:var(--text);">R${leg.race}: ${horses}</div>`;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+
+      if (data.key_horse) {
+        const k = data.key_horse;
+        html += `<div style="border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.2rem;">`;
+        html += `<div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Key Horse</div>`;
+        html += `<div style="display:flex;gap:1rem;align-items:center;">`;
+        html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
+        html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml} | ${k.ev_label}</div></div></div></div>`;
+      }
+
+      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Run Simulation first</div>`;
+      html += `</div>`;
+      setOutput(html);
+    })
+    .catch(err=>{ btn.disabled=false; btn.textContent='💰 Bet Rec'; showError('Error: '+err.message); });
+}
+
 function showError(msg) { const el=document.getElementById('error-bar'); el.textContent=msg; el.style.display='block'; }
 function hideError() { document.getElementById('error-bar').style.display='none'; }
 </script>
