@@ -244,6 +244,73 @@ def simulate():
     return jsonify(result)
 
 
+
+@app.route("/bet_recommendation")
+def bet_recommendation():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+    bankroll  = float(request.args.get("bankroll", "1000"))
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race   = races[race_key]
+    horses = race.get("horses", [])
+
+    try:
+        from simulate import run_simulation, ml_to_decimal
+        result = run_simulation(race, ANTHROPIC_API_KEY)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    MIN_EV       = 0.25
+    MAX_RACE_PCT = 0.04
+
+    def kelly_bet(win_prob, decimal_odds, bankroll):
+        b = decimal_odds
+        q = 1 - win_prob
+        k = max((b * win_prob - q) / b, 0)
+        bet = min(k * 0.5, MAX_RACE_PCT) * bankroll
+        return max(round(bet / 2) * 2, 0)
+
+    bets = []
+    for r in result.get("rows", []):
+        horse = next((h for h in horses if str(h["program_num"]) == r["program_num"]), None)
+        if not horse: continue
+        ml_dec = ml_to_decimal(horse.get("morning_line"))
+        if ml_dec is None or ml_dec < 3.0: continue
+
+        win_prob = r["win_prob_raw"]
+        ev = (win_prob * (ml_dec + 1)) - 1
+
+        if ev >= MIN_EV:
+            bet = kelly_bet(win_prob, ml_dec, bankroll)
+            if bet >= 2:
+                bets.append({
+                    "pp":       r["program_num"],
+                    "name":     r["horse_name"],
+                    "win_pct":  r["win_prob_pct"],
+                    "fair":     r["fair_odds"],
+                    "ml":       r["morning_line"],
+                    "ev":       f"+{ev*100:.0f}%",
+                    "ev_raw":   ev,
+                    "bet":      bet,
+                    "bet_type": "WIN",
+                })
+
+    # Sort by EV, return top 2
+    bets.sort(key=lambda x: x["ev_raw"], reverse=True)
+
+    return jsonify({
+        "bets":   bets[:2],
+        "action": "BET" if bets else "PASS",
+        "reason": f"{len(bets)} value bet(s) found above 25% EV threshold" if bets else "No value — ML too short or no edge found. Skip this race."
+    })
+
+
 @app.route("/analyze")
 def analyze():
     upload_id = request.args.get("upload_id", "")
