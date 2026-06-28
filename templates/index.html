@@ -354,7 +354,7 @@ function selectRace(key) {
   document.getElementById('picks-bar').style.display='none';
   document.getElementById('sim-btn').disabled=false;
   document.getElementById('analyze-btn').disabled=false;
-  document.getElementById('bet-btn').disabled=false;
+  const betBtn = document.getElementById('bet-btn'); if(betBtn) betBtn.disabled=false;
   document.getElementById('analysis-status').textContent='';
   document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
   const ai=document.querySelector(`.race-item[data-key="${key}"]`);
