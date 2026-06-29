@@ -322,7 +322,15 @@ def bet_recommendation():
         "legs": [{"race": rn, "horses": [{"pp": h["pp"], "name": h["name"], "win_pct": h["win_pct"]} for h in top[:2]]}]
     })
 
-    return jsonify({"recs": recs, "race": rn, "key_horse": key})
+    return jsonify({
+        "recs":      recs,
+        "race":      rn,
+        "key_horse": key,
+        "sim_rows":  [{"pp": r["program_num"], "name": r["horse_name"],
+                       "win_pct": r["win_prob_pct"], "win_prob_raw": r["win_prob_raw"],
+                       "fair": r["fair_odds"], "ml": r["morning_line"],
+                       "ev_label": r["ev_label"]} for r in top]
+    })
 
 
 @app.route("/analyze")

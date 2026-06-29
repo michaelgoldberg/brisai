@@ -536,6 +536,138 @@ function doBet() {
       let html = '<div style="padding:1.2rem 1.5rem;">';
       html += `<div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Exotic Wager Recommendations — ${raceTitle}</div>`;
 
+      // LIVE ODDS INPUT PANEL
+      html += `<div style="background:#0d2a1a;border:1px solid #3dba7e;border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.2rem;">`;
+      html += `<div style="font-size:0.75rem;font-weight:bold;color:#3dba7e;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">📡 Live Tote Odds (enter before post)</div>`;
+      html += `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.8rem;">Check TVG, TwinSpires, or NYRA Bets 5-10 min before post. Enter current odds below to recalculate EV.</div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem;" id="live-odds-grid">`;
+
+      if (data.sim_rows) {
+        data.sim_rows.forEach(r => {
+          html += `<div style="background:var(--slate);border:1px solid var(--border);border-radius:4px;padding:0.4rem 0.6rem;">`;
+          html += `<div style="font-size:0.7rem;color:var(--muted);">#${r.pp} ${r.name.substring(0,14)}</div>`;
+          html += `<div style="display:flex;align-items:center;gap:0.3rem;margin-top:0.25rem;">`;
+          html += `<input type="number" id="odds-${r.pp}" placeholder="${r.ml}" step="0.5" min="1"
+                    style="width:60px;background:var(--navy);border:1px solid var(--border);border-radius:3px;color:#fff;font-size:0.8rem;padding:0.2rem 0.3rem;font-family:monospace;"
+                    onchange="recalcEV()">`;
+          html += `<span style="font-size:0.68rem;color:var(--muted);">-1</span>`;
+          html += `<span id="ev-${r.pp}" style="font-size:0.68rem;margin-left:0.2rem;"></span>`;
+          html += `</div></div>`;
+        });
+      }
+
+      html += `</div>`;
+      html += `<div style="margin-top:0.8rem;display:flex;gap:0.6rem;align-items:center;">`;
+      html += `<button onclick="recalcEV()" style="background:#3dba7e;border:none;border-radius:4px;color:#000;font-size:0.78rem;font-weight:bold;padding:0.35rem 0.8rem;cursor:pointer;">↻ Update EV</button>`;
+      html += `<div id="live-summary" style="font-size:0.78rem;color:var(--muted);"></div>`;
+      html += `</div></div>`;
+
+      // EXOTIC RECS
+      data.recs.forEach(rec => {
+        html += `<div style="background:var(--slate2);border:1px solid var(--border);border-radius:6px;padding:0.9rem 1.1rem;margin-bottom:0.8rem;">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">`;
+        html += `<span style="font-size:0.75rem;font-weight:bold;letter-spacing:0.12em;color:var(--gold)">${rec.type}</span>`;
+        html += `<span style="background:var(--navy);color:var(--gold2);font-family:monospace;font-size:0.85rem;padding:0.15rem 0.5rem;border-radius:3px;">$${typeof rec.total === 'number' ? rec.total.toFixed(2) : rec.total}</span>`;
+        html += `</div>`;
+        html += `<div style="font-size:0.88rem;color:#fff;margin-bottom:0.3rem;">${rec.desc}</div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);">${rec.note}</div>`;
+        if (rec.combos) {
+          html += `<div style="margin-top:0.6rem;">`;
+          rec.combos.forEach(c => {
+            html += `<div style="font-size:0.78rem;color:var(--text);font-family:monospace;padding:0.15rem 0;">#${c.key_pp}→#${c.under_pp} ${c.under_name} — $${c.bet}</div>`;
+          });
+          html += `</div>`;
+        }
+        if (rec.legs) {
+          html += `<div style="margin-top:0.6rem;">`;
+          rec.legs.forEach(leg => {
+            const horses = leg.horses.map(h => `#${h.pp} ${h.name}`).join(' / ');
+            html += `<div style="font-size:0.78rem;color:var(--text);">R${leg.race}: ${horses}</div>`;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+
+      if (data.key_horse) {
+        const k = data.key_horse;
+        html += `<div style="border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.2rem;">`;
+        html += `<div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Key Horse (Sim)</div>`;
+        html += `<div style="display:flex;gap:1rem;align-items:center;">`;
+        html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
+        html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);" id="key-horse-ev">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml} | ${k.ev_label}</div></div></div></div>`;
+      }
+
+      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Enter live odds above for real-time EV</div>`;
+      html += `</div>`;
+      setOutput(html);
+
+      // Store sim data for EV recalc
+      window._simRows = data.sim_rows || [];
+    })
+    .catch(err=>{ btn.disabled=false; btn.textContent='💰 Bet Rec'; showError('Error: '+err.message); });
+}
+
+function recalcEV() {
+  if (!window._simRows || !window._simRows.length) return;
+
+  let valueBets = [];
+  window._simRows.forEach(r => {
+    const input = document.getElementById(`odds-${r.pp}`);
+    if (!input || !input.value) return;
+
+    const liveOdds = parseFloat(input.value);
+    const winProb  = r.win_prob_raw;
+    const ev       = (winProb * (liveOdds + 1)) - 1;
+    const evEl     = document.getElementById(`ev-${r.pp}`);
+
+    if (evEl) {
+      if (ev >= 0.15) {
+        evEl.textContent = `+${(ev*100).toFixed(0)}%`;
+        evEl.style.color = '#3dba7e';
+        evEl.style.fontWeight = 'bold';
+        valueBets.push({pp: r.pp, name: r.name, ev: ev, odds: liveOdds, win_pct: r.win_prob_pct});
+      } else if (ev < -0.10) {
+        evEl.textContent = `${(ev*100).toFixed(0)}%`;
+        evEl.style.color = '#e05555';
+        evEl.style.fontWeight = 'normal';
+      } else {
+        evEl.textContent = 'Fair';
+        evEl.style.color = '#96afc4';
+        evEl.style.fontWeight = 'normal';
+      }
+    }
+  });
+
+  const summary = document.getElementById('live-summary');
+  if (summary) {
+    if (valueBets.length > 0) {
+      const best = valueBets.sort((a,b) => b.ev - a.ev)[0];
+      summary.innerHTML = `<span style="color:#3dba7e;font-weight:bold;">✅ ${valueBets.length} overlay(s) found — Best: #${best.pp} ${best.name} at ${best.odds}-1 (+${(best.ev*100).toFixed(0)}% EV)</span>`;
+    } else {
+      summary.innerHTML = `<span style="color:#e05555;">No overlays at current odds — consider passing</span>`;
+    }
+  }
+}
+
+function showError(msg) {
+  if (!uploadId || !currentKey) return;
+  const btn = document.getElementById('bet-btn');
+  btn.disabled = true; btn.textContent = '⏳ Building…';
+  hideError();
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building exotic wager recommendations…</div>');
+
+  fetch(`/bet_recommendation?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&bankroll=1000`)
+    .then(r=>r.json())
+    .then(data=>{
+      btn.disabled=false; btn.textContent='💰 Bet Rec';
+      if (data.error) { showError(data.error); return; }
+
+      const raceTitle = document.getElementById('analysis-title').textContent;
+      let html = '<div style="padding:1.2rem 1.5rem;">';
+      html += `<div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Exotic Wager Recommendations — ${raceTitle}</div>`;
+
       data.recs.forEach(rec => {
         html += `<div style="background:var(--slate2);border:1px solid var(--border);border-radius:6px;padding:0.9rem 1.1rem;margin-bottom:0.8rem;">`;
         html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">`;
