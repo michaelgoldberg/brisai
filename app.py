@@ -35,8 +35,9 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
-    "CDX0628": {"label": "Churchill Downs - Sun Jun 28", "file": "CDX0628.DRF"},
-    "BAQ0628": {"label": "Aqueduct - Sun Jun 28",        "file": "BAQ0628.DRF"},
+    "SAR0703": {"label": "Saratoga - Thu Jul 3 (11 races, incl. Wild Apple & Schuylerville)", "file": "SAR0703.DRF"},
+    "SAR0704": {"label": "Saratoga - Fri Jul 4 (11 races, incl. Belmont Oaks G1 & Belmont Derby G1)", "file": "SAR0704.DRF"},
+    "SAR0705": {"label": "Saratoga - Sat Jul 5 (9 races, incl. Queen's Plate G1 & Kelso G3)", "file": "SAR0705.DRF"},
 }
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample_cards")
 
