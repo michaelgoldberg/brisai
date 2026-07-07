@@ -678,6 +678,19 @@ function renderPacePlot(data) {
       Circle/Square size = Finishing kick (LP pace). Squares = Early speed. Circles = Off-pace. Dashed gold line = Par.
     </div>
     ${ftsNote}
+    <div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.8rem;">
+      <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;">Horse Directory</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.3rem;">
+        ${data.horses.map(h => {
+          const col = {'E':'#3dba7e','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'}[h.style] || '#96afc4';
+          const ftsTag = h.fts ? ' <span style="font-size:0.6rem;color:#96afc4;">[no data]</span>' : '';
+          return `<div style="display:flex;align-items:center;gap:0.5rem;">
+            <span style="background:${col};color:#000;font-weight:bold;font-size:0.72rem;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${h.pp}</span>
+            <span style="font-size:0.78rem;color:#fff;font-weight:${h.fts?'normal':'bold'};">${h.name}${ftsTag}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
   </div>`;
 
   setOutput(html);
