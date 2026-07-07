@@ -359,6 +359,7 @@ function selectRace(key) {
   document.getElementById('sim-btn').disabled=false;
   document.getElementById('analyze-btn').disabled=false;
   const betBtn = document.getElementById('bet-btn'); if(betBtn) betBtn.disabled=false;
+  const paceBtn = document.getElementById('pace-btn'); if(paceBtn) paceBtn.disabled=false;
   document.getElementById('analysis-status').textContent='';
   document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
   const ai=document.querySelector(`.race-item[data-key="${key}"]`);
@@ -536,6 +537,151 @@ function doAnalyze() {
 
 function doneAnalyzing() { analyzing=false; document.getElementById('analyze-btn').disabled=false; document.getElementById('analysis-status').textContent=''; }
 function setOutput(html) { document.getElementById('analysis-output').innerHTML=html; }
+function doPacePlot() {
+  if (!uploadId || !currentKey) return;
+  const btn = document.getElementById('pace-btn');
+  btn.disabled = true; btn.textContent = '⏳ Plotting…';
+  hideError();
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building pace plot…</div>');
+
+  const scratchedList = Array.from(scratched).join(',');
+  fetch(`/pace_plot?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
+    .then(r=>r.json())
+    .then(data=>{
+      btn.disabled=false; btn.textContent='📈 Pace Plot';
+      if (data.error) { showError(data.error); return; }
+      renderPacePlot(data);
+    })
+    .catch(err=>{ btn.disabled=false; btn.textContent='📈 Pace Plot'; showError('Error: '+err.message); });
+}
+
+function renderPacePlot(data) {
+  const horses = data.horses.filter(h => !h.fts && h.e1 && h.e2);
+  const fts    = data.horses.filter(h => h.fts || !h.e1);
+
+  if (!horses.length) { setOutput('<div style="padding:2rem;color:var(--muted)">Not enough pace data to plot this race.</div>'); return; }
+
+  // Find ranges for scaling
+  const e1vals = horses.map(h=>h.e1);
+  const e2vals = horses.map(h=>h.e2);
+  const minE1=Math.min(...e1vals), maxE1=Math.max(...e1vals);
+  const minE2=Math.min(...e2vals), maxE2=Math.max(...e2vals);
+  const padE1=(maxE1-minE1)*0.2||10, padE2=(maxE2-minE2)*0.2||10;
+  const xMin=minE1-padE1, xMax=maxE1+padE1;
+  const yMin=minE2-padE2, yMax=maxE2+padE2;
+
+  const W=680, H=480, ML=60, MR=30, MT=30, MB=50;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+
+  const toX = e1 => ML + (e1-xMin)/(xMax-xMin)*plotW;
+  const toY = e2 => MT + plotH - (e2-yMin)/(yMax-yMin)*plotH;
+  const parX = toX(data.par);
+
+  // Style colors
+  const styleColor = {'E':'#3dba7e','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'};
+  const styleName  = {'E':'Early Speed','EP':'Early-Presser','P':'Presser','PS':'Press-Stalk','S':'Stalker','SS':'Deep Closer'};
+
+  let svg = `<svg viewBox="0 0 ${W} ${H+120}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:${W}px;background:#0d1b2a;border-radius:8px;">`;
+
+  // Background
+  svg += `<rect width="${W}" height="${H+120}" fill="#0d1b2a"/>`;
+
+  // Quadrant backgrounds
+  const midX = ML + plotW/2, midY = MT + plotH/2;
+  svg += `<rect x="${ML}" y="${MT}" width="${plotW/2}" height="${plotH/2}" fill="rgba(61,186,126,0.04)"/>`;
+  svg += `<rect x="${midX}" y="${MT}" width="${plotW/2}" height="${plotH/2}" fill="rgba(224,85,85,0.04)"/>`;
+  svg += `<rect x="${ML}" y="${midY}" width="${plotW/2}" height="${plotH/2}" fill="rgba(212,168,67,0.04)"/>`;
+  svg += `<rect x="${midX}" y="${midY}" width="${plotW/2}" height="${plotH/2}" fill="rgba(122,179,240,0.04)"/>`;
+
+  // Quadrant labels
+  svg += `<text x="${ML+8}" y="${MT+16}" fill="rgba(61,186,126,0.4)" font-size="10" font-family="monospace">Q1 LONE SPEED</text>`;
+  svg += `<text x="${midX+8}" y="${MT+16}" fill="rgba(224,85,85,0.4)" font-size="10" font-family="monospace">Q2 SPEED DUEL</text>`;
+  svg += `<text x="${ML+8}" y="${midY+16}" fill="rgba(212,168,67,0.4)" font-size="10" font-family="monospace">Q3 STALKERS</text>`;
+  svg += `<text x="${midX+8}" y="${midY+16}" fill="rgba(122,179,240,0.4)" font-size="10" font-family="monospace">Q4 CLOSERS</text>`;
+
+  // Grid lines
+  svg += `<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="1"/>`;
+  svg += `<line x1="${ML}" y1="${MT+plotH}" x2="${ML+plotW}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="1"/>`;
+  svg += `<line x1="${midX}" y1="${MT}" x2="${midX}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="0.5" stroke-dasharray="4,4"/>`;
+  svg += `<line x1="${ML}" y1="${midY}" x2="${ML+plotW}" y2="${midY}" stroke="#2a3d52" stroke-width="0.5" stroke-dasharray="4,4"/>`;
+
+  // Par line (vertical)
+  svg += `<line x1="${parX}" y1="${MT}" x2="${parX}" y2="${MT+plotH}" stroke="#d4a843" stroke-width="1" stroke-dasharray="6,3" opacity="0.6"/>`;
+  svg += `<text x="${parX+4}" y="${MT+plotH-4}" fill="#d4a843" font-size="9" font-family="monospace" opacity="0.8">PAR</text>`;
+
+  // Diagonal flow band
+  svg += `<line x1="${ML}" y1="${MT+plotH}" x2="${ML+plotW}" y2="${MT}" stroke="rgba(255,255,255,0.06)" stroke-width="20"/>`;
+
+  // Axis labels
+  svg += `<text x="${ML+plotW/2}" y="${H-8}" fill="#96afc4" font-size="11" text-anchor="middle" font-family="sans-serif">← Earlier Position (E1 Pace)   Later Position →</text>`;
+  svg += `<text x="14" y="${MT+plotH/2}" fill="#96afc4" font-size="11" text-anchor="middle" font-family="sans-serif" transform="rotate(-90,14,${MT+plotH/2})">↑ Pace Velocity (E2)</text>`;
+
+  // Plot horses
+  horses.forEach(h => {
+    const x = toX(h.e1);
+    const y = toY(h.e2);
+    const lp = h.lp || 75;
+    const r  = Math.max(14, Math.min(28, (lp - 60) * 0.7 + 14));
+    const col = styleColor[h.style] || '#96afc4';
+    const isSpeed = h.style === 'E' || h.style === 'EP';
+    const shape = isSpeed ? 'rect' : 'circle';
+
+    if (shape === 'rect') {
+      svg += `<rect x="${x-r*0.8}" y="${y-r*0.8}" width="${r*1.6}" height="${r*1.6}" rx="3" fill="${col}" fill-opacity="0.25" stroke="${col}" stroke-width="2"/>`;
+    } else {
+      svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" fill-opacity="0.2" stroke="${col}" stroke-width="2"/>`;
+    }
+    svg += `<text x="${x}" y="${y+4}" fill="${col}" font-size="12" font-weight="bold" text-anchor="middle" font-family="monospace">${h.pp}</text>`;
+
+    // Horse name tooltip on hover (simplified: show near point)
+    svg += `<text x="${x}" y="${y-r-4}" fill="#ffffff" font-size="8" text-anchor="middle" font-family="sans-serif" opacity="0.7">${h.name.split(' ')[0]}</text>`;
+  });
+
+  svg += `</svg>`;
+
+  // Legend + stats
+  const legendItems = Object.entries(styleColor).map(([s,c]) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${c};display:inline-block;"></span>
+      <span style="font-size:0.72rem;color:#d4c9b0;">${styleName[s]}</span>
+    </span>`).join('');
+
+  // FTS horses note
+  let ftsNote = '';
+  if (fts.length) {
+    ftsNote = `<div style="font-size:0.75rem;color:#96afc4;margin-top:0.5rem;">
+      Not plotted (insufficient data): ${fts.map(h=>`#${h.pp} ${h.name}`).join(', ')}
+    </div>`;
+  }
+
+  const html = `<div style="padding:1rem 1.2rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
+      <div>
+        <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:#96afc4;">TrackIQ Pace Plot</div>
+        <div style="font-size:0.9rem;font-weight:bold;color:#fff;">Race ${data.race_num} · ${data.distance} ${data.surface} · ${data.race_class}</div>
+      </div>
+      <div style="display:flex;gap:1rem;align-items:center;">
+        <div style="text-align:center;">
+          <div style="font-size:0.65rem;color:#96afc4;text-transform:uppercase;letter-spacing:0.1em;">Pace Contention</div>
+          <div style="font-size:0.85rem;font-weight:bold;color:${data.contention_color};">${data.contention}</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:0.65rem;color:#96afc4;text-transform:uppercase;letter-spacing:0.1em;">Par Line</div>
+          <div style="font-size:0.85rem;font-weight:bold;color:#d4a843;">${data.par}</div>
+        </div>
+      </div>
+    </div>
+    ${svg}
+    <div style="margin-top:0.8rem;display:flex;flex-wrap:wrap;gap:0.2rem;">${legendItems}</div>
+    <div style="font-size:0.72rem;color:#96afc4;margin-top:0.5rem;">
+      Circle/Square size = Finishing kick (LP pace). Squares = Early speed. Circles = Off-pace. Dashed gold line = Par.
+    </div>
+    ${ftsNote}
+  </div>`;
+
+  setOutput(html);
+}
+
 function doBet() {
   if (!uploadId || !currentKey) return;
   const btn = document.getElementById('bet-btn');

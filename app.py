@@ -246,6 +246,83 @@ def simulate():
 
 
 
+
+@app.route("/pace_plot")
+def pace_plot():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+    scratched = [s.strip() for s in request.args.get("scratched", "").split(",") if s.strip()]
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race   = races[race_key]
+    ri     = race.get("race_info", {})
+    horses = [h for h in race.get("horses", [])
+              if str(h.get("program_num","")) not in scratched]
+
+    plot_horses = []
+    for h in horses:
+        past = h.get("past_races", [])
+        e1s  = [p["e1_pace"]   for p in past[:5] if p.get("e1_pace")]
+        e2s  = [p["e2_pace"]   for p in past[:5] if p.get("e2_pace")]
+        lps  = [p["late_pace"] for p in past[:5] if p.get("late_pace")]
+
+        if not e1s or not e2s:
+            # First time starters — plot with defaults
+            plot_horses.append({
+                "pp":    h.get("program_num"),
+                "name":  h.get("horse_name"),
+                "style": h.get("bris_run_style", "P"),
+                "e1":    None, "e2": None, "lp": None,
+                "ml":    h.get("morning_line"),
+                "fts":   True,
+            })
+            continue
+
+        plot_horses.append({
+            "pp":    h.get("program_num"),
+            "name":  h.get("horse_name"),
+            "style": h.get("bris_run_style", "P"),
+            "e1":    round(sum(e1s)/len(e1s), 1),
+            "e2":    round(sum(e2s)/len(e2s), 1),
+            "lp":    round(sum(lps)/len(lps), 1) if lps else None,
+            "ml":    h.get("morning_line"),
+            "fts":   False,
+        })
+
+    # Count speed horses for contention rating
+    speed_horses = sum(1 for h in plot_horses
+                      if h["style"] in ("E","EP") and not h["fts"])
+    if speed_horses >= 3:
+        contention = "HIGH"
+        contention_color = "#e05555"
+    elif speed_horses == 2:
+        contention = "MODERATE"
+        contention_color = "#d4a843"
+    else:
+        contention = "LOW"
+        contention_color = "#3dba7e"
+
+    # Par line = average E1 of all plotted horses
+    e1_vals = [h["e1"] for h in plot_horses if h["e1"]]
+    par = round(sum(e1_vals)/len(e1_vals), 1) if e1_vals else 80.0
+
+    return jsonify({
+        "horses":           plot_horses,
+        "contention":       contention,
+        "contention_color": contention_color,
+        "par":              par,
+        "race_num":         ri.get("race_num"),
+        "distance":         ri.get("distance"),
+        "surface":          ri.get("surface"),
+        "race_class":       ri.get("race_class"),
+    })
+
+
 @app.route("/bet_recommendation")
 def bet_recommendation():
     upload_id = request.args.get("upload_id", "")
