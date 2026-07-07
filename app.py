@@ -35,9 +35,10 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
-    "SAR0703": {"label": "Saratoga - Thu Jul 3 (11 races, incl. Wild Apple & Schuylerville)", "file": "SAR0703.DRF"},
-    "SAR0704": {"label": "Saratoga - Fri Jul 4 (11 races, incl. Belmont Oaks G1 & Belmont Derby G1)", "file": "SAR0704.DRF"},
-    "SAR0705": {"label": "Saratoga - Sat Jul 5 (9 races, incl. Queen's Plate G1 & Kelso G3)", "file": "SAR0705.DRF"},
+    "MNR0707": {"label": "Mountaineer Park - Mon Jul 7 (8 races)", "file": "MNR0707.DRF"},
+    "SAR0703": {"label": "Saratoga - Thu Jul 3 (11 races)", "file": "SAR0703.DRF"},
+    "SAR0704": {"label": "Saratoga - Fri Jul 4 (11 races, incl. Belmont Oaks G1)", "file": "SAR0704.DRF"},
+    "SAR0705": {"label": "Saratoga - Sat Jul 5 (9 races)", "file": "SAR0705.DRF"},
 }
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample_cards")
 
