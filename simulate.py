@@ -15,45 +15,43 @@ MODEL = "claude-sonnet-4-6"
 # Weights must sum to 1.0 per profile.
 # Tuned from Jun 27 BAQ/CDX results analysis.
 
-# Weights tuned from Jun 27 BAQ (Fast, avg rank 3.8) and CDX (Sloppy, avg rank 2.8)
-# BAQ issue: too much E1/pace, missed closers. Need recency/best_speed boost.
-# CDX performing well — small style_fit increase for closers on wet.
+# Weights focused on pace figures, class, and style — Prime Power and speed figures removed
 WEIGHTS = {
     "fast_dirt": {
-        "prime_power":   0.25,
-        "speed_avg":     0.15,   # reduced - avg figures less predictive than best
-        "speed_best":    0.22,   # increased - best figure more predictive
-        "pace_e1":       0.15,   # reduced - was overweighted, missed closers
-        "pace_e2":       0.12,
-        "class":         0.06,
-        "style_fit":     0.05,
+        "prime_power":   0.00,
+        "speed_avg":     0.00,
+        "speed_best":    0.00,
+        "pace_e1":       0.40,   # Early pace dominant on fast dirt
+        "pace_e2":       0.30,   # Middle pace
+        "class":         0.15,
+        "style_fit":     0.15,
     },
     "sloppy_dirt": {
-        "prime_power":   0.35,
-        "speed_avg":     0.12,
-        "speed_best":    0.10,
-        "pace_e1":       0.07,
-        "pace_e2":       0.06,
-        "class":         0.15,
-        "style_fit":     0.15,   # increased - closers strongly favored on sloppy
+        "prime_power":   0.00,
+        "speed_avg":     0.00,
+        "speed_best":    0.00,
+        "pace_e1":       0.25,   # Pace less reliable on wet
+        "pace_e2":       0.20,
+        "class":         0.30,   # Class dominates on sloppy
+        "style_fit":     0.25,   # Closers benefit on wet tracks
     },
     "turf": {
-        "prime_power":   0.22,
-        "speed_avg":     0.18,
-        "speed_best":    0.18,   # turf speed best figure very important
-        "pace_e1":       0.08,
-        "pace_e2":       0.08,
-        "class":         0.18,   # class critical on turf
-        "style_fit":     0.08,
+        "prime_power":   0.00,
+        "speed_avg":     0.00,
+        "speed_best":    0.00,
+        "pace_e1":       0.30,
+        "pace_e2":       0.25,
+        "class":         0.30,   # Class critical on turf
+        "style_fit":     0.15,
     },
     "muddy_dirt": {
-        "prime_power":   0.30,
-        "speed_avg":     0.10,
-        "speed_best":    0.10,
-        "pace_e1":       0.08,
-        "pace_e2":       0.07,
-        "class":         0.20,
-        "style_fit":     0.15,
+        "prime_power":   0.00,
+        "speed_avg":     0.00,
+        "speed_best":    0.00,
+        "pace_e1":       0.20,
+        "pace_e2":       0.18,
+        "class":         0.35,   # Class most important on muddy
+        "style_fit":     0.27,
     },
 }
 
