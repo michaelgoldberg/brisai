@@ -48,10 +48,10 @@ WEIGHTS = {
         "prime_power":   0.00,
         "speed_avg":     0.00,
         "speed_best":    0.00,
-        "pace_e1":       0.20,
-        "pace_e2":       0.18,
-        "class":         0.35,   # Class most important on muddy
-        "style_fit":     0.27,
+        "pace_e1":       0.40,   # MNR Jul6: early speed won 6/8 on muddy - E1 critical
+        "pace_e2":       0.25,
+        "class":         0.25,   # Favorites 7/8 - class still matters
+        "style_fit":     0.10,   # Reduced - closers did NOT benefit on muddy MNR
     },
 }
 
