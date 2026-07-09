@@ -21,10 +21,10 @@ WEIGHTS = {
         "prime_power":   0.00,
         "speed_avg":     0.00,
         "speed_best":    0.00,
-        "pace_e1":       0.40,   # Early pace dominant on fast dirt
-        "pace_e2":       0.30,   # Middle pace
-        "class":         0.15,
-        "style_fit":     0.15,
+        "pace_e1":       0.35,   # MNR Jul7: E1 still key but balanced with class
+        "pace_e2":       0.25,
+        "class":         0.25,   # Boosted - class more predictive than style on good dirt
+        "style_fit":     0.15,   # Balanced - E/P/S all won equally on Jul7 good track
     },
     "sloppy_dirt": {
         "prime_power":   0.00,
@@ -229,8 +229,9 @@ def run_simulation(race_data: dict, api_key: str, n_sims: int = 2000) -> dict:
     horse_list = [h for h, _ in base_probs]
 
     for _ in range(n_sims):
-        # Add noise to simulate real-world variance
-        noisy = [max(p + random.gauss(0, p * 0.15), 0.001) for p in probs_only]
+        # Add noise — larger fields get more variance (harder to differentiate)
+        noise_factor = 0.15 + (max(len(horse_list) - 8, 0) * 0.015)  # +1.5% per horse over 8
+        noisy = [max(p + random.gauss(0, p * noise_factor), 0.001) for p in probs_only]
         total = sum(noisy)
         noisy = [p / total for p in noisy]
 
