@@ -204,6 +204,20 @@ def field():
         last3_spd = [p.get("bris_speed") for p in pr[:3] if p.get("bris_speed")]
         last3_e1  = [p.get("e1_pace")    for p in pr[:3] if p.get("e1_pace")]
         last3_lp  = [p.get("late_pace")  for p in pr[:3] if p.get("late_pace")]
+        # Speed figure trend
+        trend = "--"
+        if len(last3_spd) >= 2:
+            diff = float(last3_spd[0]) - float(last3_spd[1])
+            if len(last3_spd) >= 3:
+                diff = float(last3_spd[0]) - (float(last3_spd[1]) + float(last3_spd[2])) / 2
+            if diff >= 8:   trend = "↑↑ +{:.0f}".format(diff)
+            elif diff >= 4: trend = "↑ +{:.0f}".format(diff)
+            elif diff >= 1: trend = "↗ +{:.0f}".format(diff)
+            elif diff <= -8: trend = "↓↓ {:.0f}".format(diff)
+            elif diff <= -4: trend = "↓ {:.0f}".format(diff)
+            elif diff <= -1: trend = "↘ {:.0f}".format(diff)
+            else: trend = "→ 0"
+
         field.append({
             "pp":          h.get("program_num", ""),
             "horse":       h.get("horse_name", ""),
@@ -217,6 +231,7 @@ def field():
             "spd_last3":   "/".join(str(s) for s in last3_spd) if last3_spd else "--",
             "e1_last3":    "/".join(str(s) for s in last3_e1)  if last3_e1  else "--",
             "lp_last3":    "/".join(str(s) for s in last3_lp)  if last3_lp  else "--",
+            "trend":       trend,
         })
 
     return jsonify({"horses": field})

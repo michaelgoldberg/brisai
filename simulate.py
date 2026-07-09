@@ -136,6 +136,35 @@ def score_horse(horse: dict, weights: dict, profile_name: str, pace_count: dict)
     elif days_off and days_off < 10:
         freshness = 0.95   # Too quick back
 
+    # Speed figure TREND over last 3 races
+    # Improving = bonus, declining = penalty
+    spd_figs = [p.get("bris_speed") for p in past[:3] if p.get("bris_speed")]
+    trend_mult = 1.0
+    if len(spd_figs) >= 2:
+        # Most recent is index 0
+        recent  = float(spd_figs[0])
+        prev    = float(spd_figs[1])
+        diff    = recent - prev
+
+        if len(spd_figs) >= 3:
+            # Use average of last 2 vs most recent for smoother signal
+            avg_prev = (float(spd_figs[1]) + float(spd_figs[2])) / 2
+            diff = recent - avg_prev
+
+        if diff >= 8:
+            trend_mult = 1.12    # Strong improver (+12%)
+        elif diff >= 4:
+            trend_mult = 1.06    # Mild improver (+6%)
+        elif diff >= 1:
+            trend_mult = 1.02    # Slight improver (+2%)
+        elif diff <= -8:
+            trend_mult = 0.88    # Sharp decliner (-12%)
+        elif diff <= -4:
+            trend_mult = 0.94    # Mild decliner (-6%)
+        elif diff <= -1:
+            trend_mult = 0.98    # Slight decliner (-2%)
+        # else: flat — no adjustment
+
     # Weighted score
     raw = (
         weights["prime_power"] * float(pp)          +
@@ -147,7 +176,7 @@ def score_horse(horse: dict, weights: dict, profile_name: str, pace_count: dict)
         weights["style_fit"]   * float(style_fit_score)
     )
 
-    return raw * freshness
+    return raw * freshness * trend_mult
 
 
 # ── MONTE CARLO ──────────────────────────────────────────────────────────
