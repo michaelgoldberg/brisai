@@ -68,17 +68,41 @@ STYLE_SCORES = {
 
 # ── HELPER: detect track condition from race_info ─────────────────────────
 
+# Track-specific weight overrides based on empirical results
+TRACK_OVERRIDES = {
+    # Penn National: strong speed bias, E1 dominant (71% E/EP winners over 14 races)
+    "PEN": {
+        "fast_dirt":  {"prime_power":0.00,"speed_avg":0.00,"speed_best":0.00,
+                       "pace_e1":0.50,"pace_e2":0.25,"class":0.15,"style_fit":0.10},
+        "sloppy_dirt":{"prime_power":0.00,"speed_avg":0.00,"speed_best":0.00,
+                       "pace_e1":0.40,"pace_e2":0.25,"class":0.20,"style_fit":0.15},
+    },
+    # Mountaineer: muddy=speed bias; good=more balanced
+    "MNR": {
+        "fast_dirt":  {"prime_power":0.00,"speed_avg":0.00,"speed_best":0.00,
+                       "pace_e1":0.35,"pace_e2":0.25,"class":0.25,"style_fit":0.15},
+        "muddy_dirt": {"prime_power":0.00,"speed_avg":0.00,"speed_best":0.00,
+                       "pace_e1":0.40,"pace_e2":0.25,"class":0.25,"style_fit":0.10},
+    },
+}
+
 def get_weight_profile(race_info: dict) -> tuple[str, dict]:
     surface   = (race_info.get("surface") or "Dirt").lower()
     condition = (race_info.get("track_condition") or "").lower()
+    track     = (race_info.get("track") or "").upper()
 
     if "turf" in surface or "grass" in surface:
-        return "turf", WEIGHTS["turf"]
-    if any(w in condition for w in ["sloppy", "muddy", "wet", "good to sloppy"]):
-        if "muddy" in condition:
-            return "muddy_dirt", WEIGHTS["muddy_dirt"]
-        return "sloppy_dirt", WEIGHTS["sloppy_dirt"]
-    return "fast_dirt", WEIGHTS["fast_dirt"]
+        profile = "turf"
+    elif any(w in condition for w in ["sloppy", "muddy", "wet", "good to sloppy"]):
+        profile = "muddy_dirt" if "muddy" in condition else "sloppy_dirt"
+    else:
+        profile = "fast_dirt"
+
+    # Check for track-specific override
+    if track in TRACK_OVERRIDES and profile in TRACK_OVERRIDES[track]:
+        return profile, TRACK_OVERRIDES[track][profile]
+
+    return profile, WEIGHTS[profile]
 
 
 # ── SCORE A SINGLE HORSE ──────────────────────────────────────────────────
