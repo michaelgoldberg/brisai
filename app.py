@@ -35,6 +35,7 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
+    "PEN0709": {"label": "Penn National - Wed Jul 9 (7 races)", "file": "PEN0709.DRF"},
     "MNR0707": {"label": "Mountaineer Park - Mon Jul 7 (8 races)", "file": "MNR0707.DRF"},
     "SAR0703": {"label": "Saratoga - Thu Jul 3 (11 races)", "file": "SAR0703.DRF"},
     "SAR0704": {"label": "Saratoga - Fri Jul 4 (11 races, incl. Belmont Oaks G1)", "file": "SAR0704.DRF"},
