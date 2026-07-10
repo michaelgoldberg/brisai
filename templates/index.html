@@ -470,7 +470,7 @@ function renderSimResults(data) {
   const rows=data.rows||[];
   let html='<div class="sim-wrap">';
   html+='<div class="sim-title">Monte Carlo Simulation — 2,000 Races</div>';
-  html+='<table class="sim-table"><thead><tr><th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th><th>EV Signal</th></tr></thead><tbody>';
+  html+='<table class="sim-table"><thead><tr><th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th></tr></thead><tbody>';
   rows.forEach((r,i)=>{
     const evCls=r.ev_color==='positive'?'ev-pos':r.ev_color==='negative'?'ev-neg':'ev-neu';
     const medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
@@ -480,7 +480,6 @@ function renderSimResults(data) {
       <td style="color:var(--gold2);font-weight:bold;font-family:var(--mono)">${r.win_prob_pct}</td>
       <td style="font-family:var(--mono)">${r.fair_odds}</td>
       <td style="font-family:var(--mono);color:var(--muted)">${r.morning_line}</td>
-      <td class="${evCls}">${r.ev_label}</td>
     </tr>`;
   });
   html+='</tbody></table>';
@@ -717,7 +716,7 @@ function doBet() {
       // LIVE ODDS INPUT PANEL
       html += `<div style="background:#0d2a1a;border:1px solid #3dba7e;border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.2rem;">`;
       html += `<div style="font-size:0.75rem;font-weight:bold;color:#3dba7e;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">📡 Live Tote Odds (enter before post)</div>`;
-      html += `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.8rem;">Check TVG, TwinSpires, or NYRA Bets 5-10 min before post. Enter current odds below to recalculate EV.</div>`;
+      html += `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.8rem;">Check TVG, TwinSpires, or NYRA Bets 5-10 min before post. Enter current odds below to find overlays.</div>`;
       html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem;" id="live-odds-grid">`;
 
       if (data.sim_rows) {
@@ -736,7 +735,7 @@ function doBet() {
 
       html += `</div>`;
       html += `<div style="margin-top:0.8rem;display:flex;gap:0.6rem;align-items:center;">`;
-      html += `<button onclick="recalcEV()" style="background:#3dba7e;border:none;border-radius:4px;color:#000;font-size:0.78rem;font-weight:bold;padding:0.35rem 0.8rem;cursor:pointer;">↻ Update EV</button>`;
+      html += `<button onclick="recalcEV()" style="background:#3dba7e;border:none;border-radius:4px;color:#000;font-size:0.78rem;font-weight:bold;padding:0.35rem 0.8rem;cursor:pointer;">↻ Update Odds</button>`;
       html += `<div id="live-summary" style="font-size:0.78rem;color:var(--muted);"></div>`;
       html += `</div></div>`;
 
@@ -774,10 +773,10 @@ function doBet() {
         html += `<div style="display:flex;gap:1rem;align-items:center;">`;
         html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
         html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);" id="key-horse-ev">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml} | ${k.ev_label}</div></div></div></div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);" id="key-horse-ev">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml}</div></div></div></div>`;
       }
 
-      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Enter live odds above for real-time EV</div>`;
+      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Enter live odds above to identify overlays</div>`;
       html += `</div>`;
       setOutput(html);
 
@@ -822,7 +821,7 @@ function recalcEV() {
   if (summary) {
     if (valueBets.length > 0) {
       const best = valueBets.sort((a,b) => b.ev - a.ev)[0];
-      summary.innerHTML = `<span style="color:#3dba7e;font-weight:bold;">✅ ${valueBets.length} overlay(s) found — Best: #${best.pp} ${best.name} at ${best.odds}-1 (+${(best.ev*100).toFixed(0)}% EV)</span>`;
+      summary.innerHTML = `<span style="color:#3dba7e;font-weight:bold;">✅ ${valueBets.length} overlay(s) found — Best: #${best.pp} ${best.name} at ${best.odds}-1 (Fair: ${best.fair})</span>`;
     } else {
       summary.innerHTML = `<span style="color:#e05555;">No overlays at current odds — consider passing</span>`;
     }
@@ -879,7 +878,7 @@ function showError(msg) {
         html += `<div style="display:flex;gap:1rem;align-items:center;">`;
         html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
         html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml} | ${k.ev_label}</div></div></div></div>`;
+        html += `<div style="font-size:0.75rem;color:var(--muted);">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml}</div></div></div></div>`;
       }
 
       html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Run Simulation first</div>`;

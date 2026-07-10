@@ -288,8 +288,8 @@ def run_simulation(race_data: dict, api_key: str, n_sims: int = 2000) -> dict:
             "win_prob_pct": f"{win_pct*100:.0f}%",
             "fair_odds":    fair_odds,
             "morning_line": ml_disp,
-            "ev_label":     ev["label"],
-            "ev_color":     ev["color"],
+            "ev_label":     "",
+            "ev_color":     "neutral",
             "win_prob_raw": win_pct,
             "sim_wins":     wins,
         })
