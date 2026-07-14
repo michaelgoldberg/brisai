@@ -35,6 +35,7 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
+    "IND0714": {"label": "Indiana Grand - Mon Jul 14 (10 races)", "file": "IND0714.DRF"},
     "WOX0709": {"label": "Woodbine - Wed Jul 9 (7 races, Tapeta/Dirt)", "file": "WOX0709.DRF"},
     "PEN0709": {"label": "Penn National - Wed Jul 9 (7 races)", "file": "PEN0709.DRF"},
     "MNR0707": {"label": "Mountaineer Park - Mon Jul 7 (8 races)", "file": "MNR0707.DRF"},
