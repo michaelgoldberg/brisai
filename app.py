@@ -264,6 +264,101 @@ def simulate():
 
 
 
+
+@app.route("/pace_projection")
+def pace_projection():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+    scratched = [s.strip() for s in request.args.get("scratched","").split(",") if s.strip()]
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race   = races[race_key]
+    ri     = race.get("race_info", {})
+    horses = [h for h in race.get("horses",[]) if str(h.get("program_num","")) not in scratched]
+
+    projection = []
+    for h in horses:
+        past = h.get("past_races", [])[:4]
+        if not past:
+            projection.append({
+                "pp": h.get("program_num"), "name": h.get("horse_name"),
+                "style": h.get("bris_run_style","?"), "ml": h.get("morning_line"),
+                "calls": None, "fts": True
+            })
+            continue
+
+        # Average running positions across last 4 races
+        calls = {"pp":[], "c1":[], "c2":[], "str":[], "fin":[]}
+        for p in past:
+            if p.get("pos_pp"):  calls["pp"].append(p["pos_pp"])
+            if p.get("pos_1st"): calls["c1"].append(p["pos_1st"])
+            if p.get("pos_2nd"): calls["c2"].append(p["pos_2nd"])
+            if p.get("pos_str"): calls["str"].append(p["pos_str"])
+            if p.get("pos_fin"): calls["fin"].append(p["pos_fin"])
+
+        avg = {}
+        for k, v in calls.items():
+            avg[k] = round(sum(v)/len(v), 1) if v else None
+
+        # Also get individual race lines for detail
+        race_lines = []
+        for p in past:
+            race_lines.append({
+                "date":  p.get("date",""),
+                "track": p.get("track",""),
+                "pp":    p.get("pos_pp"),
+                "c1":    p.get("pos_1st"),
+                "c2":    p.get("pos_2nd"),
+                "str":   p.get("pos_str"),
+                "fin":   p.get("pos_fin"),
+                "spd":   p.get("bris_speed"),
+            })
+
+        projection.append({
+            "pp":    h.get("program_num"),
+            "name":  h.get("horse_name"),
+            "style": h.get("bris_run_style","?"),
+            "ml":    h.get("morning_line"),
+            "avg":   avg,
+            "lines": race_lines,
+            "fts":   False,
+        })
+
+    # Sort by projected early position (c1 avg)
+    projection.sort(key=lambda x: x["avg"]["c1"] if x.get("avg") and x["avg"].get("c1") else 99)
+
+    # Pace scenario analysis
+    early = [h for h in projection if h.get("avg") and h["avg"].get("c1") and h["avg"]["c1"] <= 3]
+    speed_count = len(early)
+    if speed_count >= 3:
+        scenario = "CONTESTED — Multiple speed horses, pace likely to collapse"
+        scenario_color = "#e05555"
+    elif speed_count == 2:
+        scenario = "PRESSURED — Two speed horses will duel, slight pace concern"
+        scenario_color = "#d4a843"
+    elif speed_count == 1:
+        scenario = "LONE SPEED — Clear front-runner, likely to control fractions"
+        scenario_color = "#3dba7e"
+    else:
+        scenario = "SLOW PACE — No confirmed early speed, race may develop slowly"
+        scenario_color = "#7ab3f0"
+
+    return jsonify({
+        "horses":          projection,
+        "scenario":        scenario,
+        "scenario_color":  scenario_color,
+        "speed_count":     speed_count,
+        "race_num":        ri.get("race_num"),
+        "distance":        ri.get("distance"),
+        "surface":         ri.get("surface"),
+    })
+
+
 @app.route("/pace_plot")
 def pace_plot():
     upload_id = request.args.get("upload_id", "")

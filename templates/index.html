@@ -200,6 +200,7 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
     </select>
     <button class="btn-sim" id="sim-btn" onclick="doSimulate()" disabled>🎲 Run Simulation</button>
       <button class="btn-pace" id="pace-btn" onclick="doPacePlot()" disabled>📈 Pace Plot</button>
+      <button class="btn-proj" id="proj-btn" onclick="doPaceProjection()" disabled>🏁 Pace Projection</button>
     <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ AI Analysis</button>
       <button class="btn-bet" id="bet-btn" onclick="doBet()" disabled>💰 Bet Rec</button>
   </div>
@@ -361,6 +362,7 @@ function selectRace(key) {
   document.getElementById('analyze-btn').disabled=false;
   const betBtn = document.getElementById('bet-btn'); if(betBtn) betBtn.disabled=false;
   const paceBtn = document.getElementById('pace-btn'); if(paceBtn) paceBtn.disabled=false;
+  const projBtn = document.getElementById('proj-btn'); if(projBtn) projBtn.disabled=false;
   document.getElementById('analysis-status').textContent='';
   document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
   const ai=document.querySelector(`.race-item[data-key="${key}"]`);
@@ -693,6 +695,109 @@ function renderPacePlot(data) {
     </div>
   </div>`;
 
+  setOutput(html);
+}
+
+function doPaceProjection() {
+  if (!uploadId || !currentKey) return;
+  const btn = document.getElementById('proj-btn');
+  btn.disabled = true; btn.textContent = '⏳ Projecting…';
+  hideError();
+  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building pace projection…</div>');
+
+  const scratchedList = Array.from(scratched).join(',');
+  fetch(`/pace_projection?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
+    .then(r=>r.json())
+    .then(data=>{
+      btn.disabled=false; btn.textContent='🏁 Pace Projection';
+      if (data.error) { showError(data.error); return; }
+      renderPaceProjection(data);
+    })
+    .catch(err=>{ btn.disabled=false; btn.textContent='🏁 Pace Projection'; showError('Error: '+err.message); });
+}
+
+function renderPaceProjection(data) {
+  const horses = data.horses;
+  const styleColor = {'E':'#3dba7e','E/P':'#d4a843','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'};
+
+  let html = '<div style="padding:1.2rem 1.5rem;">';
+
+  // Header
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
+    <div>
+      <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Pace Projection — Last 4 Races</div>
+      <div style="font-size:0.9rem;font-weight:bold;color:#fff;">Race ${data.race_num} · ${data.distance} ${data.surface}</div>
+    </div>
+    <div style="background:rgba(0,0,0,0.3);border:1px solid ${data.scenario_color};border-radius:6px;padding:0.5rem 0.9rem;max-width:320px;">
+      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">Pace Scenario</div>
+      <div style="font-size:0.82rem;font-weight:bold;color:${data.scenario_color};">${data.scenario}</div>
+    </div>
+  </div>`;
+
+  // Main projection grid
+  const calls = ['PP', 'C1', 'C2', 'STR', 'FIN'];
+  const callKeys = ['pp','c1','c2','str','fin'];
+  const maxPos = Math.max(...horses.filter(h=>h.avg).map(h=>Math.max(...callKeys.map(k=>h.avg[k]||0))), 1);
+
+  html += '<div style="overflow-x:auto;">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
+  html += '<thead><tr style="border-bottom:1px solid var(--gold);">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">PP</th>';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Horse</th>';
+  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">ML</th>';
+  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Style</th>';
+  calls.forEach(c => {
+    html += `<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;text-align:center;">${c}</th>`;
+  });
+  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Last 4 Running Lines</th>';
+  html += '</tr></thead><tbody>';
+
+  horses.forEach((h, idx) => {
+    const col = styleColor[h.style] || '#96afc4';
+    const rowBg = idx % 2 === 0 ? 'var(--slate2)' : 'var(--slate)';
+
+    html += `<tr style="background:${rowBg};border-bottom:1px solid rgba(42,61,82,0.4);">`;
+    html += `<td style="padding:6px 8px;color:var(--gold);font-weight:bold;font-family:monospace;">${h.pp}</td>`;
+    html += `<td style="padding:6px 8px;color:#fff;font-weight:bold;">${h.name}</td>`;
+    html += `<td style="padding:6px 8px;color:var(--muted);text-align:center;font-family:monospace;">${h.ml||'--'}</td>`;
+    html += `<td style="padding:6px 8px;text-align:center;"><span style="background:${col}22;color:${col};border:1px solid ${col};border-radius:3px;padding:1px 5px;font-size:0.7rem;font-weight:bold;">${h.style||'?'}</span></td>`;
+
+    if (h.fts || !h.avg) {
+      calls.forEach(() => { html += '<td style="padding:6px 8px;text-align:center;color:var(--muted);">--</td>'; });
+      html += '<td style="padding:6px 8px;color:var(--muted);font-size:0.72rem;">First time starter / no data</td>';
+    } else {
+      callKeys.forEach((k,i) => {
+        const val = h.avg[k];
+        // Color: position 1-2 = green, 3-4 = gold, 5+ = muted
+        const posColor = val <= 2 ? '#3dba7e' : val <= 4 ? '#d4a843' : val <= 6 ? 'var(--text)' : 'var(--muted)';
+        html += `<td style="padding:6px 8px;text-align:center;color:${posColor};font-weight:${val<=2?'bold':'normal'};font-family:monospace;">${val||'--'}</td>`;
+      });
+
+      // Running lines
+      const lines = (h.lines||[]).slice(0,4).map(l => {
+        const pos = [l.pp,l.c1,l.c2,l.str,l.fin].map(p=>p||'-').join('-');
+        const spd = l.spd ? ` (${l.spd})` : '';
+        return `<span style="font-family:monospace;font-size:0.7rem;color:var(--muted);margin-right:8px;">${pos}${spd}</span>`;
+      }).join('');
+      html += `<td style="padding:6px 8px;">${lines}</td>`;
+    }
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  // Legend
+  html += `<div style="margin-top:0.8rem;font-size:0.7rem;color:var(--muted);">
+    PP=Pre-pace · C1=First call · C2=Second call · STR=Stretch · FIN=Finish · Numbers = position in field · Avg of last 4 races · (speed fig in parens)
+  </div>`;
+
+  // FTS note
+  const fts = horses.filter(h=>h.fts);
+  if (fts.length) {
+    html += `<div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);">No data: ${fts.map(h=>`#${h.pp} ${h.name}`).join(', ')}</div>`;
+  }
+
+  html += '</div>';
   setOutput(html);
 }
 

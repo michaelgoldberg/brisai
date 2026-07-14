@@ -169,6 +169,12 @@ def parse_brisnet_file(filepath):
                     "final_time":  safe_float(row, PAST_RACE_COL["final_time"] + i),
                     "winner":      safe_get(row, PAST_RACE_COL["winner"] + i),
                     "len_fin":     safe_float(row, PAST_RACE_COL["len_fin"] + i),
+                    "pos_pp":      safe_int(row, PAST_RACE_COL["pos_pp"] + i),
+                    "pos_1st":     safe_int(row, PAST_RACE_COL["pos_1st"] + i),
+                    "pos_2nd":     safe_int(row, PAST_RACE_COL["pos_2nd"] + i),
+                    "pos_str":     safe_int(row, PAST_RACE_COL["pos_str"] + i),
+                    "pos_fin":     safe_int(row, PAST_RACE_COL["pos_fin"] + i),
+                    "len_str":     safe_float(row, PAST_RACE_COL["len_str"] + i),
                     "past_trainer":safe_get(row, PAST_RACE_COL["past_trainer"] + i),
                     "past_jockey": safe_get(row, PAST_RACE_COL["past_jockey"] + i),
                 })
