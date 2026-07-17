@@ -234,7 +234,6 @@ def build_claude_prompt(race_data, sim_data=None):
         lines.append(f"  Age: {h['age'] or '?'}yo {h['sex']}  |  Wt: {h['weight']}  |  ML: {h['morning_line']}")
         lines.append(f"  Trainer: {h['trainer']}  |  Jockey: {h['jockey']}")
         lines.append(f"  Sire: {h['sire']}  |  State Bred: {h['state_bred']}")
-        lines.append(f"  BRIS Prime Power: {h['prime_power'] or 'N/A'}")
         lines.append(f"  Avg Speed (last 3): {h['avg_speed'] or 'N/A'}  |  Best Speed: {h['best_speed'] or 'N/A'}")
         lines.append(f"  BRIS Running Style: {style_label} ({h['bris_run_style']})")
 

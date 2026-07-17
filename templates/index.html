@@ -385,7 +385,7 @@ function renderFieldTable(horses) {
   const styleMap = {'E':'E','EP':'EP','P':'P','PS':'P','S':'S','SS':'S'};
   let html='<div class="field-hint">Click ✕ to scratch · Click horse row to highlight · Run Simulation for probabilities</div>';
   html+='<table class="ftable"><thead><tr>';
-  html+='<th style="width:32px;">SCR</th><th>PP</th><th>Horse</th><th>ML</th><th>Prime Pwr</th><th>Spd L3</th><th>TREND</th><th>E1</th><th>LP</th><th>Style</th>';
+  html+='<th style="width:32px;">SCR</th><th>PP</th><th>Horse</th><th>ML</th><th>Spd L3</th><th>TREND</th><th>E1</th><th>LP</th><th>Style</th>';
   html+='</tr></thead><tbody>';
   horses.forEach(h=>{
     const s=styleMap[h.style]||'P';
@@ -397,7 +397,6 @@ function renderFieldTable(horses) {
       <td class="td-pp">${h.pp}</td>
       <td class="td-horse" onclick="highlightHorse(this.parentNode)">${h.horse}</td>
       <td class="td-ml">${h.ml}</td>
-      <td class="td-fig" style="color:var(--gold2)">${h.prime_power||'--'}</td>
       <td class="td-fig">${h.spd_last3}</td>
       <td class="td-fig">${h.e1_last3}</td>
       <td class="td-fig">${h.lp_last3}</td>

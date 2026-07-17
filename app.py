@@ -227,7 +227,6 @@ def field():
             "jockey":      h.get("jockey", ""),
             "trainer":     h.get("trainer", ""),
             "ml":          h.get("morning_line", ""),
-            "prime_power": h.get("prime_power", ""),
             "avg_speed":   h.get("avg_speed", ""),
             "best_speed":  h.get("best_speed", ""),
             "style":       h.get("bris_run_style", ""),
