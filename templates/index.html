@@ -160,7 +160,7 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
 <body>
 
 <!-- GATE -->
-<div id="gate">
+<div id="gate" style="display:none">
   <div class="gate-card">
     <div class="logo-title">TrackIQ</div>
     <div class="logo-sub">Intelligent Handicapping · Smarter Wagering</div>
@@ -186,7 +186,7 @@ table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
 </div>
 
 <!-- APP -->
-<div id="app">
+<div id="app" style="display:flex">
   <div class="app-header">
     <div class="header-logo">TrackIQ<span>Intelligent Handicapping · Smarter Wagering</span></div>
     <span class="track-label">Track:</span>
@@ -932,6 +932,8 @@ function recalcEV() {
   }
 }
 
+window.addEventListener("load", () => initSampleCards());
+
 function showError(msg) {
   if (!uploadId || !currentKey) return;
   const btn = document.getElementById('bet-btn');
@@ -991,6 +993,8 @@ function showError(msg) {
     })
     .catch(err=>{ btn.disabled=false; btn.textContent='💰 Bet Rec'; showError('Error: '+err.message); });
 }
+
+window.addEventListener("load", () => initSampleCards());
 
 function showError(msg) { const el=document.getElementById('error-bar'); el.textContent=msg; el.style.display='block'; }
 function hideError() { document.getElementById('error-bar').style.display='none'; }
