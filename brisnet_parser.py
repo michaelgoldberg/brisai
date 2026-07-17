@@ -130,6 +130,9 @@ def parse_brisnet_file(filepath):
                 "sire":          safe_get(row, HORSE_FIELDS["sire"]),
                 "bris_run_style":safe_get(row, HORSE_FIELDS["bris_run_style"]),
                 "prime_power":   safe_float(row, HORSE_FIELDS["prime_power"]),
+                "jockey_starts": safe_int(row, HORSE_FIELDS["jockey_starts"]),
+                "jockey_wins":   safe_int(row, HORSE_FIELDS["jockey_wins"]),
+                "jockey_places": safe_int(row, HORSE_FIELDS["jockey_places"]),
                 "past_races":    [],
                 "race_info":     race_info,
             }

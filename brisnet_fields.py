@@ -41,6 +41,10 @@ HORSE_FIELDS = {
     "dam":         52,   # Dam name (maternal)
     "dam_sire":    53,   # Dam's sire
     "jockey":      32,   # Jockey name  ← was 22, FIXED
+    "jockey_starts": 34,  # Jockey starts (current meet/year)
+    "jockey_wins":   35,  # Jockey wins
+    "jockey_places": 36,  # Jockey places
+    "jockey_shows":  37,  # Jockey shows
     "owner":       38,   # Owner name
     "state_bred":  56,   # State bred (KY, FL, CA, etc.)
     "bris_run_style": 209, # Brisnet running style: E / E/P / P / S / NA  ← NEW
