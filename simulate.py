@@ -182,12 +182,16 @@ def score_horse(horse, race_info, weights):
             return 0.0
 
     # ── PACE FACTORS ──────────────────────────────────────────────────────────
-    e1s = [p["e1_pace"]   for p in past if p.get("e1_pace")]
-    e2s = [p["e2_pace"]   for p in past if p.get("e2_pace")]
-    lps = [p["late_pace"] for p in past if p.get("late_pace")]
-    avg_e1 = sum(e1s)/len(e1s) if e1s else 70.0
-    avg_e2 = sum(e2s)/len(e2s) if e2s else 70.0
-    avg_lp = sum(lps)/len(lps) if lps else 70.0
+    # Recency-weighted pace: most recent race counts 2x, second 1.5x, rest 1x
+    RECENCY = [2.0, 1.5, 1.0, 1.0]
+    def weighted_avg(vals_from_past, field):
+        vals = [(p[field], RECENCY[i]) for i,p in enumerate(vals_from_past) if p.get(field)]
+        if not vals: return None
+        return sum(v*w for v,w in vals) / sum(w for _,w in vals)
+
+    avg_e1 = weighted_avg(past, "e1_pace")  or 70.0
+    avg_e2 = weighted_avg(past, "e2_pace")  or 70.0
+    avg_lp = weighted_avg(past, "late_pace") or 70.0
 
     e1_norm = min(max((avg_e1 - 50) / 60 * 100, 0), 100)
     e2_norm = min(max((avg_e2 - 50) / 60 * 100, 0), 100)
@@ -205,21 +209,40 @@ def score_horse(horse, race_info, weights):
     # ── SPEED FACTORS ─────────────────────────────────────────────────────────
     speed_figs = [p["bris_speed"] for p in past if p.get("bris_speed")]
     best_speed = max(speed_figs) if speed_figs else 60.0
-    best_speed_norm = min(max((best_speed - 50) / 70 * 100, 0), 100)
+    # Blend best speed with recency-weighted recent speed for better signal
+    recent_spd = weighted_avg(past, "bris_speed") or best_speed
+    blended_speed = (best_speed * 0.6 + recent_spd * 0.4)
+    best_speed_norm = min(max((blended_speed - 50) / 70 * 100, 0), 100)
 
-    # Trend (training progression)
+    # Trend (training progression) — recency weighted
     trend_mult = 1.0
     if len(speed_figs) >= 2:
         recent   = float(speed_figs[0])
         avg_prev = sum(float(f) for f in speed_figs[1:]) / len(speed_figs[1:])
         diff = recent - avg_prev
-        if diff >= 8:    trend_mult = 1.12
-        elif diff >= 4:  trend_mult = 1.06
-        elif diff >= 1:  trend_mult = 1.02
-        elif diff <= -8: trend_mult = 0.88
-        elif diff <= -4: trend_mult = 0.94
-        elif diff <= -1: trend_mult = 0.98
-    trend_norm = 75.0  # placeholder — effect applied via multiplier
+        if diff >= 8:    trend_mult = 1.14
+        elif diff >= 4:  trend_mult = 1.07
+        elif diff >= 1:  trend_mult = 1.03
+        elif diff <= -8: trend_mult = 0.86
+        elif diff <= -4: trend_mult = 0.93
+        elif diff <= -1: trend_mult = 0.97
+
+    # Form cycle bonus: reward horses that finished well in most recent race
+    if past:
+        last = past[0]
+        last_fin  = last.get("finish_pos") or 99
+        last_num  = last.get("num_horses") or 8
+        # Won last race
+        if last_fin == 1:
+            trend_mult *= 1.10
+        # Finished in top 25% of field
+        elif last_fin <= max(2, last_num * 0.25):
+            trend_mult *= 1.05
+        # Finished last or near last
+        elif last_fin >= last_num - 1 and last_num >= 5:
+            trend_mult *= 0.92
+
+    trend_norm = 75.0
 
     # ── JOCKEY WIN % ──────────────────────────────────────────────────────────
     j_starts = horse.get("jockey_starts") or 0
@@ -334,7 +357,13 @@ def run_simulation(race_data, api_key, n_sims=2000):
     win_counts = {str(h["program_num"]): 0 for h in horse_list}
 
     for _ in range(n_sims):
-        noise = 0.15 + max(len(horse_list)-8, 0) * 0.015
+        # Tighter noise for smaller fields to sharpen differentiation
+        if len(horse_list) <= 6:
+            noise = 0.08
+        elif len(horse_list) <= 9:
+            noise = 0.11
+        else:
+            noise = 0.13 + max(len(horse_list)-10, 0) * 0.01
         noisy = [max(p + random.gauss(0, p*noise), 0.001) for p in probs_only]
         tot   = sum(noisy); noisy = [p/tot for p in noisy]
         r = random.random(); cum = 0.0; wi = len(horse_list)-1
