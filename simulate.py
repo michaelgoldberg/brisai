@@ -102,32 +102,32 @@ TRACK_OVERRIDES = {
     },
     "SAR": {
         "dirt": {
-            "pace_e1":        0.20,   # Saratoga: long stretch rewards closers
+            "pace_e1":        0.16,
             "pace_e2":        0.00,
-            "pace_lp":        0.28,   # LP heavily elevated at SAR
-            "pos_c1":         0.04,   # less weight on early position
-            "pos_str":        0.06,   # more weight on stretch position
-            "best_speed":     0.14,
+            "pace_lp":        0.40,   # LP dominant at SAR dirt
+            "pos_c1":         0.03,
+            "pos_str":        0.07,
+            "best_speed":     0.12,
             "trend":          0.08,
             "jockey_win_pct": 0.08,
-            "class":          0.06,
-            "distance_fit":   0.03,
-            "surface_fit":    0.02,
-            "condition_fit":  0.01,
+            "class":          0.03,
+            "distance_fit":   0.02,
+            "surface_fit":    0.01,
+            "condition_fit":  0.00,
             "finish_pos":     0.00,
         },
         "turf": {
-            "pace_e1":        0.16,
+            "pace_e1":        0.14,
             "pace_e2":        0.00,
-            "pace_lp":        0.30,   # Turf closers thrive at SAR
-            "pos_c1":         0.03,
-            "pos_str":        0.07,
-            "best_speed":     0.14,
+            "pace_lp":        0.40,   # LP dominant at SAR turf
+            "pos_c1":         0.02,
+            "pos_str":        0.08,
+            "best_speed":     0.12,
             "trend":          0.08,
             "jockey_win_pct": 0.08,
-            "class":          0.08,
-            "distance_fit":   0.03,
-            "surface_fit":    0.02,
+            "class":          0.04,
+            "distance_fit":   0.02,
+            "surface_fit":    0.01,
             "condition_fit":  0.01,
             "finish_pos":     0.00,
         },
