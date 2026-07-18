@@ -35,6 +35,7 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
+    "SAR0718": {"label": "Saratoga - Fri Jul 18 (12 races, incl. Diana G1 & Coronation Cup G3)", "file": "SAR0718.DRF"},
     "IND0714": {"label": "Indiana Grand - Mon Jul 14 (10 races)", "file": "IND0714.DRF"},
     "WOX0709": {"label": "Woodbine - Wed Jul 9 (7 races, Tapeta/Dirt)", "file": "WOX0709.DRF"},
     "PEN0709": {"label": "Penn National - Wed Jul 9 (7 races)", "file": "PEN0709.DRF"},
