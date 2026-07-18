@@ -260,12 +260,12 @@ def build_claude_prompt(race_data, sim_data=None):
     # Add sim results if available
     if sim_data and not sim_data.get("error") and sim_data.get("rows"):
         lines.append("\n== SIMULATION RESULTS (2,000 runs) ==")
-        lines.append("| # | Horse | Win% | Fair Odds | ML | EV |")
-        lines.append("|---|-------|------|-----------|-----|-----|")
+        lines.append("| # | Horse | Win% | Fair Odds | ML |")
+        lines.append("|---|-------|------|-----------|-----|")
         for r in sim_data["rows"]:
             lines.append(
                 f"| {r['program_num']} | {r['horse_name']} | {r['win_prob_pct']} | "
-                f"{r['fair_odds']} | {r['morning_line']} | {r['ev_label']} |"
+                f"{r['fair_odds']} | {r['morning_line']} |"
             )
         if sim_data.get("pace_advantage"):
             lines.append(f"\nPace Advantage: {sim_data['pace_advantage']}")
