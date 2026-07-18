@@ -23,12 +23,12 @@ import random
 
 WEIGHTS = {
     "dirt": {
-        # PACE — 52% total
-        "pace_e1":         0.18,
-        "pace_e2":         0.14,
-        "pace_lp":         0.10,
-        "pos_c1":          0.06,   # position (closeness to front) at call 1
-        "pos_str":         0.04,   # position at stretch
+        # PACE — 52% total (E1 + LP only, no E2)
+        "pace_e1":         0.26,   # Early pace - first call
+        "pace_e2":         0.00,   # Removed
+        "pace_lp":         0.16,   # Final/late pace
+        "pos_c1":          0.06,   # Position at first call
+        "pos_str":         0.04,   # Position at stretch (within 3 lengths filter applied separately)
         # SPEED — 22% total
         "best_speed":      0.14,
         "trend":           0.08,
@@ -42,12 +42,12 @@ WEIGHTS = {
         "finish_pos":      0.01,
     },
     "turf": {
-        # PACE — 46%
-        "pace_e1":         0.14,
-        "pace_e2":         0.14,
-        "pace_lp":         0.12,
+        # PACE — 46% (E1 + LP only)
+        "pace_e1":         0.20,
+        "pace_e2":         0.00,
+        "pace_lp":         0.18,
         "pos_c1":          0.04,
-        "pos_str":         0.02,
+        "pos_str":         0.04,
         # SPEED — 22%
         "best_speed":      0.14,
         "trend":           0.08,
@@ -61,12 +61,12 @@ WEIGHTS = {
         "finish_pos":      0.01,
     },
     "synthetic": {
-        # PACE — 48%
-        "pace_e1":         0.16,
-        "pace_e2":         0.14,
-        "pace_lp":         0.10,
+        # PACE — 48% (E1 + LP only)
+        "pace_e1":         0.22,
+        "pace_e2":         0.00,
+        "pace_lp":         0.16,
         "pos_c1":          0.05,
-        "pos_str":         0.03,
+        "pos_str":         0.05,
         # SPEED — 22%
         "best_speed":      0.14,
         "trend":           0.08,
@@ -85,9 +85,9 @@ WEIGHTS = {
 TRACK_OVERRIDES = {
     "PEN": {
         "dirt": {
-            "pace_e1":        0.26,
-            "pace_e2":        0.16,
-            "pace_lp":        0.06,
+            "pace_e1":        0.30,
+            "pace_e2":        0.00,
+            "pace_lp":        0.18,
             "pos_c1":         0.06,
             "pos_str":        0.04,
             "best_speed":     0.12,
@@ -102,9 +102,9 @@ TRACK_OVERRIDES = {
     },
     "MNR": {
         "dirt": {
-            "pace_e1":        0.22,
-            "pace_e2":        0.14,
-            "pace_lp":        0.08,
+            "pace_e1":        0.26,
+            "pace_e2":        0.00,
+            "pace_lp":        0.18,
             "pos_c1":         0.06,
             "pos_str":        0.04,
             "best_speed":     0.14,
@@ -117,9 +117,9 @@ TRACK_OVERRIDES = {
             "finish_pos":     0.01,
         },
         "muddy": {
-            "pace_e1":        0.26,
-            "pace_e2":        0.16,
-            "pace_lp":        0.06,
+            "pace_e1":        0.30,
+            "pace_e2":        0.00,
+            "pace_lp":        0.16,
             "pos_c1":         0.06,
             "pos_str":        0.04,
             "best_speed":     0.12,
@@ -189,13 +189,39 @@ def score_horse(horse, race_info, weights):
         if not vals: return None
         return sum(v*w for v,w in vals) / sum(w for _,w in vals)
 
-    avg_e1 = weighted_avg(past, "e1_pace")  or 70.0
-    avg_e2 = weighted_avg(past, "e2_pace")  or 70.0
+    avg_e1 = weighted_avg(past, "e1_pace")   or 70.0
     avg_lp = weighted_avg(past, "late_pace") or 70.0
 
     e1_norm = min(max((avg_e1 - 50) / 60 * 100, 0), 100)
-    e2_norm = min(max((avg_e2 - 50) / 60 * 100, 0), 100)
+    e2_norm = 0.0  # Removed per spec
     lp_norm = min(max((avg_lp - 50) / 60 * 100, 0), 100)
+
+    # WITHIN 3 LENGTHS AT STRETCH filter
+    # Horses that have been within 3 lengths of lead at stretch get a bonus
+    # Horses that were more than 3 lengths back at stretch in ALL recent races get a penalty
+    stretch_within_3 = 0
+    stretch_total = 0
+    for p in past:
+        str_pos = p.get("pos_str")
+        len_str = p.get("len_str")  # lengths behind at stretch
+        if str_pos is not None:
+            stretch_total += 1
+            # If position is 1-3 or lengths behind <= 3, considered "within 3"
+            if str_pos <= 3 or (len_str is not None and len_str <= 3.0):
+                stretch_within_3 += 1
+
+    if stretch_total > 0:
+        stretch_pct = stretch_within_3 / stretch_total
+        if stretch_pct >= 0.75:
+            stretch_mult = 1.08   # Usually within 3 at stretch
+        elif stretch_pct >= 0.50:
+            stretch_mult = 1.03   # Sometimes within 3
+        elif stretch_pct == 0:
+            stretch_mult = 0.88   # Never within 3 at stretch - big penalty
+        else:
+            stretch_mult = 0.96   # Rarely within 3
+    else:
+        stretch_mult = 1.0  # No data
 
     # Position at C1 and stretch (lower position = closer to front = better)
     c1_pos  = [p["pos_1st"] for p in past if p.get("pos_1st")]
@@ -312,7 +338,7 @@ def score_horse(horse, race_info, weights):
         weights["finish_pos"]     * finish_norm
     )
 
-    return max(raw * trend_mult, 0.1)
+    return max(raw * trend_mult * stretch_mult, 0.1)
 
 
 def run_simulation(race_data, api_key, n_sims=2000):
