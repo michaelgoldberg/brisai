@@ -274,14 +274,17 @@ def simulate():
     result = run_simulation(race, ANTHROPIC_API_KEY, user_weights=user_weights)
 
     # Add style and jockey to each row from horse data
-    horse_map = {str(h.get("program_num","")): h for h in race.get("horses",[])}
-    for row in result.get("rows", []):
-        h = horse_map.get(str(row["program_num"]), {})
-        row["style"]   = h.get("bris_run_style", "?")
-        row["jockey"]  = h.get("jockey", "")
-        j_starts = h.get("jockey_starts") or 0
-        j_wins   = h.get("jockey_wins")   or 0
-        row["jockey_win_pct"] = f"{j_wins/j_starts*100:.0f}" if j_starts else "N/A"
+    try:
+        horse_map = {str(h.get("program_num","")): h for h in race.get("horses",[])}
+        for row in result.get("rows", []):
+            h = horse_map.get(str(row["program_num"]), {})
+            row["style"]   = h.get("bris_run_style", "?")
+            row["jockey"]  = h.get("jockey", "")
+            j_starts = h.get("jockey_starts") or 0
+            j_wins   = h.get("jockey_wins")   or 0
+            row["jockey_win_pct"] = f"{j_wins/j_starts*100:.0f}" if j_starts else "N/A"
+    except Exception:
+        pass
 
     return jsonify(result)
 
