@@ -5,999 +5,297 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackIQ — Intelligent Handicapping</title>
 <style>
-:root {
-  --navy:  #0d1b2a; --gold: #d4a843; --gold2: #f0d060;
-  --slate: #1e2d40; --slate2: #243447; --text: #d4c9b0;
-  --muted: #96afc4; --green: #3dba7e; --red: #e05555;
-  --border: #2a3d52; --radius: 6px;
-  --mono: 'Courier New', monospace;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--navy); color: var(--text); font-family: Georgia, serif; min-height: 100vh; }
-
-/* GATE */
-#gate { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:2rem; }
-.gate-card { background:var(--slate); border:1px solid var(--border); border-radius:10px; padding:2.5rem 3rem; width:100%; max-width:480px; text-align:center; }
-.logo-title { font-size:2.4rem; font-weight:bold; color:var(--gold); letter-spacing:0.08em; }
-.logo-sub { font-size:0.75rem; letter-spacing:0.25em; color:#a8c0d6; text-transform:uppercase; margin-top:0.2rem; margin-bottom:1.8rem; }
-.gate-headline { font-size:1.25rem; color:#fff; margin-bottom:0.4rem; }
-.gate-sub { font-size:0.95rem; color:var(--text); margin-bottom:0.25rem; }
-.gate-fine { font-size:0.85rem; color:#a8c0d6; margin-bottom:1.5rem; }
-.gate-bullets { display:flex; justify-content:center; gap:1.2rem; font-size:0.78rem; color:var(--text); margin-bottom:1.2rem; flex-wrap:wrap; }
-.gate-trust { font-size:0.82rem; color:#a8c0d6; font-style:italic; margin-bottom:1.8rem; line-height:1.5; }
-.gate-trust em { color:var(--text); font-style:normal; }
-.field-label { display:block; font-size:0.7rem; letter-spacing:0.15em; color:#a8c0d6; text-transform:uppercase; text-align:left; margin-bottom:0.3rem; margin-top:1rem; }
-input[type="text"], input[type="email"] { width:100%; background:var(--navy); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:0.95rem; padding:0.6rem 0.85rem; font-family:inherit; outline:none; transition:border-color 0.2s; }
-input:focus { border-color:var(--gold); }
-.btn-primary { width:100%; margin-top:1.4rem; background:var(--gold); color:var(--navy); border:none; border-radius:var(--radius); font-size:1rem; font-weight:bold; padding:0.75rem; cursor:pointer; font-family:Georgia,serif; transition:background 0.2s; }
-.btn-primary:hover { background:var(--gold2); }
-.btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
-.gate-contact { margin-top:1.2rem; font-size:0.75rem; color:var(--muted); }
-.gate-contact a { color:var(--gold); text-decoration:none; }
-.gate-error { background:rgba(224,85,85,0.15); border:1px solid var(--red); border-radius:var(--radius); color:var(--red); font-size:0.85rem; padding:0.6rem 0.85rem; margin-top:1rem; display:none; text-align:left; }
-
-/* APP */
-#app { display:none; flex-direction:column; height:100vh; }
-
-/* Header */
-.app-header { background:var(--slate); border-bottom:1px solid var(--border); padding:0.5rem 1rem; display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; }
-.header-logo { font-size:1.2rem; font-weight:bold; color:var(--gold); letter-spacing:0.06em; white-space:nowrap; }
-.header-logo span { font-size:0.55rem; letter-spacing:0.2em; color:var(--muted); text-transform:uppercase; display:block; }
-.hdr-sep { color:var(--border); }
-.track-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
-.track-name { font-size:0.9rem; color:#fff; font-weight:bold; }
-select { background:var(--navy); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:0.82rem; padding:0.3rem 0.5rem; font-family:inherit; cursor:pointer; outline:none; }
-select:focus { border-color:var(--gold); }
-.btn-load { background:var(--slate2); border:1px solid var(--gold); border-radius:var(--radius); color:var(--gold); font-size:0.78rem; padding:0.3rem 0.7rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
-.btn-load:hover { background:rgba(201,168,76,0.15); }
-.btn-sim { background:var(--slate2); border:1px solid #5b8dd9; border-radius:var(--radius); color:#7ab3f0; font-size:0.78rem; font-weight:bold; padding:0.3rem 0.7rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
-.btn-sim:hover { background:rgba(91,141,217,0.15); }
-.btn-sim:disabled { opacity:0.4; cursor:not-allowed; }
-.btn-analyze { background:var(--gold); border:none; border-radius:var(--radius); color:var(--navy); font-size:0.78rem; font-weight:bold; padding:0.3rem 0.8rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
-.btn-analyze:hover { background:var(--gold2); }
-.btn-analyze:disabled { opacity:0.4; cursor:not-allowed; }
-.btn-bet { background:#1a3a2a; border:1px solid #3dba7e; border-radius:var(--radius); color:#3dba7e; font-size:0.78rem; font-weight:bold; padding:0.3rem 0.8rem; cursor:pointer; font-family:inherit; white-space:nowrap; }
-.btn-bet:hover { background:#2d5a42; }
-.btn-bet:disabled { opacity:0.4; cursor:not-allowed; }
-
-/* Error bar */
-#error-bar { background:rgba(224,85,85,0.15); border-bottom:1px solid var(--red); color:var(--red); font-size:0.85rem; padding:0.4rem 1rem; display:none; }
-
-/* Body */
-.app-body { display:flex; flex:1; overflow:hidden; }
-
-/* Left panel */
-#left-panel { width:380px; min-width:300px; background:var(--slate); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
-.panel-tabs { display:flex; border-bottom:1px solid var(--border); }
-.ptab { flex:1; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); padding:0.5rem; text-align:center; cursor:pointer; border-bottom:2px solid transparent; }
-.ptab.active { color:var(--gold); border-bottom-color:var(--gold); }
-#left-content { overflow-y:auto; flex:1; }
-
-/* Field table */
-.field-hint { font-size:0.7rem; color:var(--muted); padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); }
-table.ftable { width:100%; border-collapse:collapse; font-size:0.84rem; }
-table.ftable thead th { background:var(--navy); color:var(--muted); font-size:0.65rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.4rem 0.8rem; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
-table.ftable tbody tr { border-bottom:1px solid rgba(42,61,82,0.5); cursor:pointer; }
-table.ftable tbody tr:hover { background:rgba(201,168,76,0.06); }
-table.ftable tbody tr.sel { background:rgba(201,168,76,0.12); }
-table.ftable td { padding:0.42rem 0.8rem; vertical-align:middle; white-space:nowrap; }
-.td-pp { font-weight:bold; color:var(--gold2); font-family:var(--mono); }
-.td-horse { font-weight:bold; color:#fff; max-width:200px; overflow:hidden; text-overflow:ellipsis; }
-.td-fig { font-family:var(--mono); color:var(--muted); }
-.td-ml { font-family:var(--mono); color:var(--text); }
-.style-badge { font-size:0.58rem; padding:0.1rem 0.25rem; border-radius:2px; font-weight:bold; }
-.s-E  { background:rgba(61,186,126,0.2); color:var(--green); }
-.s-EP { background:rgba(201,168,76,0.2); color:var(--gold); }
-.s-P  { background:rgba(122,143,166,0.2); color:var(--muted); }
-.s-S  { background:rgba(224,85,85,0.15); color:var(--red); }
-
-/* Race list */
-.race-list { padding:0.3rem; }
-.race-item { display:flex; align-items:center; gap:0.5rem; padding:0.45rem 0.5rem; border-radius:var(--radius); cursor:pointer; border:1px solid transparent; }
-.race-item:hover { background:rgba(201,168,76,0.07); }
-.race-item.active { background:rgba(201,168,76,0.12); border-color:var(--gold); }
-.r-badge { background:var(--navy); color:var(--gold); font-size:0.72rem; font-weight:bold; font-family:var(--mono); padding:0.12rem 0.4rem; border-radius:3px; min-width:26px; text-align:center; }
-.r-meta { font-size:0.75rem; color:#fff; line-height:1.3; }
-.r-sub { font-size:0.65rem; color:var(--muted); }
-
-/* Right panel */
-#right-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.analysis-header { background:var(--slate2); border-bottom:1px solid var(--border); padding:0.45rem 1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
-.analysis-title { font-size:0.88rem; color:#fff; font-weight:bold; }
-#analysis-status { font-size:0.78rem; color:var(--muted); }
-#analysis-output { flex:1; overflow-y:auto; padding:1.2rem 1.5rem; font-size:0.88rem; line-height:1.7; color:var(--text); white-space:pre-wrap; font-family:Georgia,serif; }
-.placeholder { color:var(--muted); text-align:center; margin-top:4rem; line-height:2.2; font-size:1rem; }
-.placeholder strong { display:block; font-size:1.4rem; color:#fff; margin-bottom:1rem; }
-
-/* Picks bar */
-.picks-bar { background:var(--slate); border-top:1px solid var(--border); padding:0.5rem 1rem; display:none; gap:1.2rem; align-items:center; flex-wrap:wrap; }
-.pick-item { display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; }
-.pick-label { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
-.pick-horse { font-weight:bold; color:#fff; }
-.pick-odds { color:var(--muted); font-size:0.75rem; }
-.pick-exacta { font-family:var(--mono); color:var(--gold2); font-weight:bold; }
-
-/* Sim table */
-.sim-wrap { padding:1rem 1.5rem; }
-.sim-title { font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.8rem; }
-table.sim-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
-table.sim-table th { background:var(--navy); color:var(--muted); font-size:0.62rem; letter-spacing:0.07em; text-transform:uppercase; padding:0.35rem 0.6rem; text-align:left; border-bottom:1px solid var(--border); }
-table.sim-table td { padding:0.38rem 0.6rem; border-bottom:1px solid rgba(42,61,82,0.4); }
-table.sim-table tr:hover td { background:rgba(201,168,76,0.05); }
-.ev-pos { color:var(--green); font-weight:bold; }
-.ev-neg { color:var(--red); }
-.ev-neu { color:var(--muted); }
-.sim-meta { font-size:0.8rem; color:var(--text); margin-top:1rem; padding:0.6rem 0.8rem; background:var(--slate2); border-radius:var(--radius); line-height:1.7; }
-
-/* Upload modal */
-#upload-overlay { display:none; position:fixed; inset:0; background:rgba(13,27,42,0.85); z-index:100; align-items:center; justify-content:center; }
-#upload-overlay.show { display:flex; }
-.upload-modal { background:var(--slate); border:1px solid var(--border); border-radius:10px; padding:2rem; width:420px; max-width:95vw; }
-.upload-modal h3 { color:var(--gold); font-size:1.1rem; margin-bottom:0.4rem; }
-.upload-modal p { font-size:0.82rem; color:var(--muted); margin-bottom:1.2rem; line-height:1.5; }
-.drop-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:2rem; text-align:center; cursor:pointer; transition:border-color 0.2s, background 0.2s; }
-.drop-zone:hover, .drop-zone.drag-over { border-color:var(--gold); background:rgba(201,168,76,0.05); }
-.drop-icon { font-size:2rem; margin-bottom:0.5rem; }
-.drop-text { font-size:0.85rem; color:var(--text); }
-.drop-sub { font-size:0.72rem; color:var(--muted); margin-top:0.3rem; }
-#file-input { display:none; }
-.upload-progress { display:none; text-align:center; padding:1rem; color:var(--muted); font-size:0.85rem; }
-.upload-error { display:none; color:var(--red); font-size:0.82rem; margin-top:0.8rem; padding:0.5rem 0.7rem; background:rgba(224,85,85,0.1); border-radius:var(--radius); border:1px solid rgba(224,85,85,0.3); }
-.modal-btns { display:flex; gap:0.6rem; margin-top:1.2rem; justify-content:flex-end; }
-.btn-cancel { background:transparent; border:1px solid var(--border); border-radius:var(--radius); color:var(--muted); font-size:0.85rem; padding:0.4rem 0.9rem; cursor:pointer; font-family:inherit; }
-
-/* Spinner */
-.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(201,168,76,0.3); border-top-color:var(--gold); border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; }
-@keyframes spin { to { transform:rotate(360deg); } }
-
-.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--muted); font-size:0.85rem; gap:0.5rem; padding:2rem; text-align:center; }
-.empty-icon { font-size:2.5rem; margin-bottom:0.5rem; }
-::-webkit-scrollbar { width:5px; }
-::-webkit-scrollbar-track { background:var(--navy); }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+:root{--navy:#0d1b2a;--gold:#d4a843;--gold2:#f0d060;--slate:#1e2d40;--slate2:#243447;--text:#d4c9b0;--muted:#96afc4;--green:#3dba7e;--red:#e05555;--border:#2a3d52;--radius:6px;--mono:'Courier New',monospace;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--navy);color:var(--text);font-family:Georgia,serif;min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:var(--slate);border-bottom:1px solid var(--border);padding:0.5rem 1rem;display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;}
+.logo{font-size:1.2rem;font-weight:bold;color:var(--gold);letter-spacing:0.06em;white-space:nowrap;}
+.logo span{font-size:0.55rem;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;display:block;}
+.track-name{font-size:0.9rem;color:#fff;font-weight:bold;}
+select{background:var(--navy);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:0.82rem;padding:0.3rem 0.5rem;font-family:inherit;cursor:pointer;outline:none;}
+select:focus{border-color:var(--gold);}
+.btn-load{background:var(--slate2);border:1px solid var(--gold);border-radius:var(--radius);color:var(--gold);font-size:0.78rem;padding:0.3rem 0.7rem;cursor:pointer;font-family:inherit;}
+.btn-load:hover{background:rgba(201,168,76,0.15);}
+.btn-run{background:var(--gold);border:none;border-radius:var(--radius);color:var(--navy);font-size:0.85rem;font-weight:bold;padding:0.35rem 1.1rem;cursor:pointer;font-family:inherit;}
+.btn-run:hover{background:var(--gold2);}
+.btn-run:disabled{opacity:0.4;cursor:not-allowed;}
+#error-bar{background:rgba(224,85,85,0.15);border-bottom:1px solid var(--red);color:var(--red);font-size:0.85rem;padding:0.4rem 1rem;display:none;}
+.body{display:flex;flex:1;overflow:hidden;}
+#left{width:195px;min-width:155px;background:var(--slate);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;}
+.left-title{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);}
+.race-item{padding:0.45rem 0.7rem;cursor:pointer;border-bottom:1px solid rgba(42,61,82,0.4);font-size:0.78rem;}
+.race-item:hover{background:rgba(201,168,76,0.07);}
+.race-item.active{background:rgba(201,168,76,0.14);border-left:3px solid var(--gold);}
+.r-num{font-weight:bold;color:var(--gold);font-family:var(--mono);margin-right:0.3rem;}
+.r-info{color:var(--muted);font-size:0.65rem;margin-top:1px;}
+#weights-panel{width:235px;min-width:195px;background:var(--slate2);border-right:1px solid var(--border);overflow-y:auto;padding:0.75rem;flex-shrink:0;}
+.wp-title{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.7rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border);}
+.weight-group{margin-bottom:0.9rem;}
+.wg-label{font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem;}
+.weight-row{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.35rem;}
+.weight-name{font-size:0.72rem;color:var(--text);flex:1;white-space:nowrap;}
+.weight-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+.weight-slider::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--gold);cursor:pointer;}
+.weight-val{font-size:0.7rem;color:var(--gold2);font-family:var(--mono);width:30px;text-align:right;}
+.total-row{display:flex;justify-content:space-between;font-size:0.72rem;padding:0.4rem 0;border-top:1px solid var(--border);margin-top:0.2rem;}
+.total-label{color:var(--muted);}
+.tv-ok{color:var(--green);font-weight:bold;font-family:var(--mono);}
+.tv-over{color:var(--red);font-weight:bold;font-family:var(--mono);}
+.btn-reset{width:100%;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);font-size:0.7rem;padding:0.25rem;cursor:pointer;margin-top:0.4rem;font-family:inherit;}
+.btn-reset:hover{border-color:var(--muted);}
+.preset-label{font-size:0.62rem;color:var(--muted);margin:0.6rem 0 0.3rem;}
+.preset-btns{display:flex;flex-wrap:wrap;gap:0.25rem;}
+.preset-btn{font-size:0.62rem;padding:0.18rem 0.45rem;border:1px solid var(--border);border-radius:3px;color:var(--muted);background:transparent;cursor:pointer;font-family:inherit;}
+.preset-btn:hover{border-color:var(--gold);color:var(--gold);}
+#results{flex:1;overflow-y:auto;padding:1rem 1.3rem;}
+.res-subtitle{font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;}
+.res-title{font-size:1rem;font-weight:bold;color:#fff;margin-bottom:0.6rem;}
+.pace-box{background:var(--slate);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.8rem;font-size:0.78rem;color:var(--text);margin-bottom:0.9rem;line-height:1.6;}
+.pace-box b{color:var(--gold);}
+table.rtable{width:100%;border-collapse:collapse;font-size:0.82rem;}
+table.rtable thead th{background:var(--navy);color:var(--muted);font-size:0.6rem;letter-spacing:0.08em;text-transform:uppercase;padding:0.38rem 0.6rem;text-align:left;border-bottom:1px solid var(--gold);}
+table.rtable tbody tr{border-bottom:1px solid rgba(42,61,82,0.4);}
+table.rtable tbody tr:nth-child(odd){background:rgba(30,45,64,0.3);}
+table.rtable tbody tr.top1{background:rgba(61,186,126,0.07);}
+table.rtable td{padding:0.38rem 0.6rem;vertical-align:middle;}
+.pos-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:0.7rem;font-weight:bold;}
+.p1{background:var(--gold);color:var(--navy);}
+.p2{background:#94a3b8;color:#000;}
+.p3{background:#b87333;color:#fff;}
+.pn{background:var(--slate);color:var(--muted);}
+.horse-nm{font-weight:bold;color:#fff;}
+.scr-row td{opacity:0.3;text-decoration:line-through;}
+.scr-btn{background:transparent;border:1px solid var(--muted);color:var(--muted);border-radius:3px;width:19px;height:19px;cursor:pointer;font-size:0.6rem;line-height:1;padding:0;}
+.scr-btn.on{background:var(--red);color:#fff;border-color:var(--red);}
+.win-pct{font-family:var(--mono);color:var(--gold2);font-weight:bold;}
+.fair-od{font-family:var(--mono);}
+.ml-od{font-family:var(--mono);color:var(--muted);}
+.jw-hi{color:var(--green);font-family:var(--mono);font-size:0.75rem;}
+.jw-mid{color:var(--gold2);font-family:var(--mono);font-size:0.75rem;}
+.jw-lo{color:var(--muted);font-family:var(--mono);font-size:0.75rem;}
+.excl{font-size:0.72rem;color:var(--red);background:rgba(224,85,85,0.1);border:1px solid rgba(224,85,85,0.3);border-radius:var(--radius);padding:0.4rem 0.7rem;margin-top:0.8rem;}
+.placeholder{text-align:center;color:var(--muted);margin-top:5rem;line-height:2.2;}
+.placeholder strong{display:block;font-size:1.1rem;color:#fff;margin-bottom:0.6rem;}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(201,168,76,0.3);border-top-color:var(--gold);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--navy);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
 </head>
 <body>
 
-<!-- GATE -->
-<div id="gate" style="display:none">
-  <div class="gate-card">
-    <div class="logo-title">TrackIQ</div>
-    <div class="logo-sub">Intelligent Handicapping · Smarter Wagering</div>
-    <div class="gate-headline">Unlock Your Free Demo</div>
-    <div class="gate-sub">Get 3 days of full access — free.</div>
-    <div class="gate-fine">No credit card required.</div>
-    <div class="gate-bullets">
-      <span>✓ AI-powered picks</span>
-      <span>✓ Monte Carlo simulation</span>
-      <span>✓ Closing line value tracking</span>
-    </div>
-    <div class="gate-trust">Built on the same industry-standard data professional handicappers and syndicates rely on — <em>Brisnet &amp; Equibase.</em></div>
-    <label class="field-label" for="g-name">Your Name</label>
-    <input id="g-name" type="text" placeholder="Jane Smith" autocomplete="name">
-    <label class="field-label" for="g-email">Your Email Address</label>
-    <input id="g-email" type="email" placeholder="you@example.com" autocomplete="email">
-    <label class="field-label" for="g-company">Company / Organization (optional)</label>
-    <input id="g-company" type="text" placeholder="e.g. Lone Star Handicappers">
-    <button class="btn-primary" id="gate-btn" onclick="doRegister()">🔑 Unlock My Free Demo</button>
-    <div class="gate-error" id="gate-error"></div>
-    <div class="gate-contact">Questions? Contact <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a></div>
-  </div>
+<div class="hdr">
+  <div class="logo">TrackIQ<span>Intelligent Handicapping</span></div>
+  <span style="color:var(--border)">|</span>
+  <span style="font-size:0.7rem;color:var(--muted)">Track:</span>
+  <span class="track-name" id="track-name">—</span>
+  <select id="race-select" onchange="selectRace(this.value)" style="max-width:260px;"><option value="">— load a card —</option></select>
+  <button class="btn-load" onclick="document.getElementById('fi').click()">📂 Load PP File</button>
+  <input type="file" id="fi" accept=".DRF,.drf,.bris" style="display:none" onchange="uploadFile(event)">
+  <select id="sample-select" onchange="loadSample(this.value)" style="max-width:240px;"><option value="">— or pick a sample card —</option></select>
+  <button class="btn-run" id="run-btn" onclick="runSim()" disabled>▶ Run Simulation</button>
 </div>
+<div id="error-bar"></div>
 
-<!-- APP -->
-<div id="app" style="display:flex">
-  <div class="app-header">
-    <div class="header-logo">TrackIQ<span>Intelligent Handicapping · Smarter Wagering</span></div>
-    <span class="track-label">Track:</span>
-    <span class="track-name" id="track-name">—</span>
-    <select id="race-select" onchange="selectRace(this.value)" style="max-width:240px;">
-      <option value="">— Load a card to begin —</option>
-    </select>
-    <button class="btn-load" onclick="showUpload()">📂 Load PP File</button>
-    <select id="sample-select" onchange="loadSample(this.value)" style="max-width:220px;">
-      <option value="">— or pick a sample card —</option>
-    </select>
-    <button class="btn-sim" id="sim-btn" onclick="doSimulate()" disabled>🎲 Run Simulation</button>
-      <button class="btn-pace" id="pace-btn" onclick="doPacePlot()" disabled>📈 Pace Plot</button>
-      <button class="btn-proj" id="proj-btn" onclick="doPaceProjection()" disabled>🏁 Pace Projection</button>
-    <button class="btn-analyze" id="analyze-btn" onclick="doAnalyze()" disabled>⚡ AI Analysis</button>
-      <button class="btn-bet" id="bet-btn" onclick="doBet()" disabled>💰 Bet Rec</button>
+<div class="body">
+  <div id="left">
+    <div class="left-title">Races</div>
+    <div id="race-list"><div style="padding:1rem;color:var(--muted);font-size:0.76rem;">Load a card to see races</div></div>
   </div>
-  <div id="error-bar"></div>
-  <div class="app-body">
 
-    <!-- Left -->
-    <div id="left-panel">
-      <div class="panel-tabs">
-        <div class="ptab active" id="tab-races">Races</div>
-      </div>
-      <div id="left-content">
-        <div class="empty"><div class="empty-icon">🏁</div><div>Load a card to see races</div></div>
-      </div>
+  <div id="weights-panel">
+    <div class="wp-title">⚙ Factor Weights</div>
+    <div class="weight-group">
+      <div class="wg-label">Pace</div>
+      <div class="weight-row"><span class="weight-name">E1 (Early Pace)</span><input type="range" class="weight-slider" id="w_pace_e1" min="0" max="60" value="27" oninput="updateW()"><span class="weight-val" id="v_pace_e1">27%</span></div>
+      <div class="weight-row"><span class="weight-name">Late Pace (LP)</span><input type="range" class="weight-slider" id="w_pace_lp" min="0" max="60" value="15" oninput="updateW()"><span class="weight-val" id="v_pace_lp">15%</span></div>
+      <div class="weight-row"><span class="weight-name">Position C1</span><input type="range" class="weight-slider" id="w_pos_c1" min="0" max="20" value="6" oninput="updateW()"><span class="weight-val" id="v_pos_c1">6%</span></div>
+      <div class="weight-row"><span class="weight-name">Position Str</span><input type="range" class="weight-slider" id="w_pos_str" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_pos_str">4%</span></div>
     </div>
-
-    <!-- Right -->
-    <div id="right-panel">
-      <div class="analysis-header">
-        <span class="analysis-title" id="analysis-title">No race selected</span>
-        <span id="analysis-status"></span>
-      </div>
-      <div id="analysis-output">
-        <div class="placeholder">
-          <strong>Welcome to TrackIQ</strong>
-          1. Pick a sample card or load your own .DRF file<br>
-          2. Select a race — the field appears here<br>
-          3. Click <strong style="color:var(--gold)">🎲 Run Simulation</strong> for Monte Carlo probabilities<br>
-          4. Click <strong style="color:var(--gold)">⚡ AI Analysis</strong> for full handicapping
-        </div>
-      </div>
-      <div class="picks-bar" id="picks-bar">
-        <span style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">AI Picks:</span>
-        <div class="pick-item" id="pick-win" style="display:none"><span class="pick-label">WIN</span><span class="pick-horse" id="pick-win-name"></span><span class="pick-odds" id="pick-win-odds"></span></div>
-        <div class="pick-item" id="pick-place" style="display:none"><span class="pick-label">PLACE</span><span class="pick-horse" id="pick-place-name"></span><span class="pick-odds" id="pick-place-odds"></span></div>
-        <div class="pick-item" id="pick-show" style="display:none"><span class="pick-label">SHOW</span><span class="pick-horse" id="pick-show-name"></span><span class="pick-odds" id="pick-show-odds"></span></div>
-        <div class="pick-item" id="pick-exacta" style="display:none"><span class="pick-label">EXACTA</span><span class="pick-exacta" id="pick-exacta-val"></span></div>
-        <div class="pick-item" id="pick-trifecta" style="display:none"><span class="pick-label">TRIFECTA</span><span class="pick-exacta" id="pick-trifecta-val"></span></div>
-      </div>
+    <div class="weight-group">
+      <div class="wg-label">Speed</div>
+      <div class="weight-row"><span class="weight-name">Best Speed Fig</span><input type="range" class="weight-slider" id="w_best_speed" min="0" max="40" value="14" oninput="updateW()"><span class="weight-val" id="v_best_speed">14%</span></div>
+      <div class="weight-row"><span class="weight-name">Speed Trend</span><input type="range" class="weight-slider" id="w_trend" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_trend">8%</span></div>
+    </div>
+    <div class="weight-group">
+      <div class="wg-label">Connections</div>
+      <div class="weight-row"><span class="weight-name">Jockey Win%</span><input type="range" class="weight-slider" id="w_jockey_win_pct" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_jockey_win_pct">8%</span></div>
+    </div>
+    <div class="weight-group">
+      <div class="wg-label">Class & Fit</div>
+      <div class="weight-row"><span class="weight-name">Class</span><input type="range" class="weight-slider" id="w_class" min="0" max="30" value="8" oninput="updateW()"><span class="weight-val" id="v_class">8%</span></div>
+      <div class="weight-row"><span class="weight-name">Distance Fit</span><input type="range" class="weight-slider" id="w_distance_fit" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_distance_fit">4%</span></div>
+      <div class="weight-row"><span class="weight-name">Surface Fit</span><input type="range" class="weight-slider" id="w_surface_fit" min="0" max="20" value="3" oninput="updateW()"><span class="weight-val" id="v_surface_fit">3%</span></div>
+      <div class="weight-row"><span class="weight-name">Condition Fit</span><input type="range" class="weight-slider" id="w_condition_fit" min="0" max="20" value="2" oninput="updateW()"><span class="weight-val" id="v_condition_fit">2%</span></div>
+      <div class="weight-row"><span class="weight-name">Finish Pos</span><input type="range" class="weight-slider" id="w_finish_pos" min="0" max="20" value="1" oninput="updateW()"><span class="weight-val" id="v_finish_pos">1%</span></div>
+    </div>
+    <div class="total-row">
+      <span class="total-label">Total</span>
+      <span id="tv" class="tv-ok">100%</span>
+    </div>
+    <button class="btn-reset" onclick="resetW()">↺ Reset to Default</button>
+    <div class="preset-label">Presets:</div>
+    <div class="preset-btns">
+      <button class="preset-btn" onclick="applyP('speed')">Speed</button>
+      <button class="preset-btn" onclick="applyP('pace')">Pace</button>
+      <button class="preset-btn" onclick="applyP('closers')">Closers</button>
+      <button class="preset-btn" onclick="applyP('saratoga')">Saratoga</button>
+      <button class="preset-btn" onclick="applyP('pen')">Penn Natl</button>
+      <button class="preset-btn" onclick="applyP('mnr')">Mountaineer</button>
     </div>
   </div>
-</div>
 
-<!-- UPLOAD MODAL -->
-<div id="upload-overlay">
-  <div class="upload-modal">
-    <h3>Load Brisnet PP File</h3>
-    <p>Upload a Brisnet Single-File PP download (.DRF or .bris). Parsed server-side.</p>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-      <div class="drop-icon">📄</div>
-      <div class="drop-text">Click to browse or drag &amp; drop</div>
-      <div class="drop-sub" id="drop-filename">Accepts .DRF and .bris files</div>
-    </div>
-    <input type="file" id="file-input" accept=".DRF,.drf,.bris,.csv" onchange="onFileSelected(event)">
-    <div class="upload-progress" id="upload-progress"><span class="spinner"></span>&nbsp; Parsing file…</div>
-    <div class="upload-error" id="upload-error"></div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="hideUpload()">Cancel</button>
-      <button class="btn-primary" id="upload-btn" onclick="doUpload()" disabled style="width:auto;margin-top:0;padding:0.4rem 1.2rem;">Upload &amp; Parse</button>
+  <div id="results">
+    <div class="placeholder">
+      <strong>TrackIQ Simulator</strong>
+      1. Load a card or pick a sample from the dropdown<br>
+      2. Select a race from the left panel<br>
+      3. Adjust factor weights with the sliders<br>
+      4. Click <strong style="color:var(--gold)">▶ Run Simulation</strong>
     </div>
   </div>
 </div>
 
 <script>
-let uploadId = null, races = {}, currentKey = null, currentTab = 'field';
-let scratched = new Set();
-let selectedFile = null, analyzing = false, simData = null;
+let uploadId=null,races={},currentKey=null,scratched=new Set();
 
-// GATE
-function doRegister() {
-  const name = document.getElementById('g-name').value.trim();
-  const email = document.getElementById('g-email').value.trim();
-  const company = document.getElementById('g-company').value.trim();
-  const btn = document.getElementById('gate-btn');
-  if (!name) { showGateErr('Please enter your name.'); return; }
-  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email.'); return; }
-  btn.disabled = true; btn.textContent = 'Checking…';
-  fetch('/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name,email,company}) })
-    .then(r=>r.json()).then(data => {
-      if (data.expired) { showGateErr(data.message || 'Trial expired.'); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; return; }
-      if (data.error)   { showGateErr(data.error); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; return; }
-      if (data.ok) {
-        document.getElementById('gate').style.display='none';
-        document.getElementById('app').style.display='flex';
-        initSampleCards();
-      }
-    }).catch(()=>{ showGateErr('Connection error.'); btn.disabled=false; btn.textContent='🔑 Unlock My Free Demo'; });
-}
-function showGateErr(msg) { const el=document.getElementById('gate-error'); el.textContent=msg; el.style.display='block'; }
-['g-name','g-email','g-company'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{ if(e.key==='Enter') doRegister(); }));
+const FACTORS=['pace_e1','pace_lp','pos_c1','pos_str','best_speed','trend','jockey_win_pct','class','distance_fit','surface_fit','condition_fit','finish_pos'];
+const DEF={pace_e1:27,pace_lp:15,pos_c1:6,pos_str:4,best_speed:14,trend:8,jockey_win_pct:8,class:8,distance_fit:4,surface_fit:3,condition_fit:2,finish_pos:1};
+const PRESETS={
+  speed:    {pace_e1:15,pace_lp:10,pos_c1:4,pos_str:3,best_speed:35,trend:15,jockey_win_pct:8,class:5,distance_fit:3,surface_fit:1,condition_fit:1,finish_pos:0},
+  pace:     {pace_e1:35,pace_lp:15,pos_c1:8,pos_str:6,best_speed:12,trend:6,jockey_win_pct:8,class:5,distance_fit:3,surface_fit:1,condition_fit:1,finish_pos:0},
+  closers:  {pace_e1:10,pace_lp:40,pos_c1:3,pos_str:8,best_speed:12,trend:8,jockey_win_pct:8,class:5,distance_fit:3,surface_fit:2,condition_fit:1,finish_pos:0},
+  saratoga: {pace_e1:16,pace_lp:40,pos_c1:3,pos_str:7,best_speed:12,trend:8,jockey_win_pct:8,class:4,distance_fit:2,surface_fit:0,condition_fit:0,finish_pos:0},
+  pen:      {pace_e1:42,pace_lp:10,pos_c1:6,pos_str:4,best_speed:12,trend:6,jockey_win_pct:8,class:6,distance_fit:3,surface_fit:1,condition_fit:1,finish_pos:1},
+  mnr:      {pace_e1:36,pace_lp:14,pos_c1:6,pos_str:4,best_speed:14,trend:6,jockey_win_pct:8,class:8,distance_fit:2,surface_fit:1,condition_fit:0,finish_pos:1},
+};
 
-// UPLOAD
-function showUpload() { selectedFile=null; document.getElementById('drop-filename').textContent='Accepts .DRF and .bris files'; document.getElementById('upload-btn').disabled=true; document.getElementById('upload-error').style.display='none'; document.getElementById('upload-progress').style.display='none'; document.getElementById('upload-overlay').classList.add('show'); }
-function hideUpload() { document.getElementById('upload-overlay').classList.remove('show'); }
-function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
-function onDragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
-function onDrop(e) { e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) setFile(f); }
-function onFileSelected(e) { const f=e.target.files[0]; if(f) setFile(f); }
-function setFile(f) { selectedFile=f; document.getElementById('drop-filename').textContent='✓ '+f.name+' ('+(f.size/1024).toFixed(0)+' KB)'; document.getElementById('upload-btn').disabled=false; document.getElementById('upload-error').style.display='none'; }
-function doUpload() {
-  if (!selectedFile) return;
-  const prog=document.getElementById('upload-progress'), errEl=document.getElementById('upload-error'), btn=document.getElementById('upload-btn');
-  prog.style.display='block'; errEl.style.display='none'; btn.disabled=true;
-  const fd=new FormData(); fd.append('file',selectedFile);
-  fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
-    prog.style.display='none';
-    if (data.error) { errEl.textContent=data.error; errEl.style.display='block'; btn.disabled=false; return; }
-    loadRaces(data.upload_id, data.races, null);
-    hideUpload();
-  }).catch(err=>{ prog.style.display='none'; errEl.textContent='Upload failed: '+err.message; errEl.style.display='block'; btn.disabled=false; });
+function getW(){const w={};FACTORS.forEach(f=>{w[f]=parseInt(document.getElementById('w_'+f).value)||0;});return w;}
+
+function updateW(){
+  const w=getW();
+  FACTORS.forEach(f=>{document.getElementById('v_'+f).textContent=w[f]+'%';});
+  const tot=Object.values(w).reduce((a,b)=>a+b,0);
+  const tv=document.getElementById('tv');
+  tv.textContent=tot+'%';
+  tv.className=tot===100?'tv-ok':'tv-over';
 }
 
-// SAMPLE CARDS
-function initSampleCards() {
-  fetch('/sample_cards').then(r=>r.json()).then(data=>{
+function resetW(){FACTORS.forEach(f=>{document.getElementById('w_'+f).value=DEF[f];});updateW();}
+function applyP(n){const p=PRESETS[n];if(!p)return;FACTORS.forEach(f=>{document.getElementById('w_'+f).value=p[f]||0;});updateW();}
+
+function uploadFile(e){
+  const file=e.target.files[0];if(!file)return;
+  const fd=new FormData();fd.append('file',file);
+  setR('<div style="text-align:center;margin-top:3rem;color:var(--muted)"><span class="spinner"></span> Parsing…</div>');
+  fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+    if(d.error){showErr(d.error);return;}
+    loadRaces(d.upload_id,d.races,null);
+  }).catch(err=>showErr(err.message));
+}
+
+window.addEventListener('load',()=>{
+  fetch('/sample_cards').then(r=>r.json()).then(d=>{
     const sel=document.getElementById('sample-select');
-    data.cards.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.label; sel.appendChild(o); });
+    d.cards.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label;sel.appendChild(o);});
   }).catch(()=>{});
-}
-function loadSample(cardId) {
-  if (!cardId) return;
+});
+
+function loadSample(id){
+  if(!id)return;
   document.getElementById('sample-select').value='';
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span> Loading card…</div>');
-  fetch(`/load_sample?card=${encodeURIComponent(cardId)}`).then(r=>r.json()).then(data=>{
-    if (data.error) { showError(data.error); return; }
-    loadRaces(data.upload_id, data.races, data.label);
-  }).catch(err=>showError('Could not load sample: '+err.message));
+  setR('<div style="text-align:center;margin-top:3rem;color:var(--muted)"><span class="spinner"></span> Loading…</div>');
+  fetch('/load_sample?card='+encodeURIComponent(id)).then(r=>r.json()).then(d=>{
+    if(d.error){showErr(d.error);return;}
+    loadRaces(d.upload_id,d.races,d.label);
+  }).catch(err=>showErr(err.message));
 }
 
-// RACE LOADING
-function loadRaces(uid, raceList, label) {
-  uploadId=uid; races={}; simData=null;
-  raceList.forEach(r=>{ races[r.key]=r; });
+function loadRaces(uid,list,label){
+  uploadId=uid;races={};scratched=new Set();
+  list.forEach(r=>races[r.key]=r);
   const sel=document.getElementById('race-select');
   sel.innerHTML='';
-  raceList.forEach(r=>{
-    const o=document.createElement('option'); o.value=r.key;
-    const surf=r.surface?' · '+r.surface:'';
-    o.textContent=`Race ${r.race_num} · ${r.distance}${surf} · ${r.race_class} (${r.num_horses})`;
-    sel.appendChild(o);
-  });
-  const trackName = label || (raceList.length>0 ? raceList[0].key.split('|')[0] : '—');
-  document.getElementById('track-name').textContent=trackName;
-  renderRaceList(raceList);
-  if (raceList.length>0) selectRace(raceList[0].key);
+  list.forEach(r=>{const o=document.createElement('option');o.value=r.key;o.textContent=`Race ${r.race_num} · ${r.distance} ${r.surface||''} · ${r.race_class} (${r.num_horses})`;sel.appendChild(o);});
+  document.getElementById('track-name').textContent=label||(list.length?list[0].key.split('|')[0]:'—');
+  let html='';
+  list.forEach(r=>{html+=`<div class="race-item" data-key="${r.key}" onclick="selectRace('${r.key}')"><span class="r-num">R${r.race_num}</span>${r.distance} ${r.surface||''}<div class="r-info">${r.race_class} · ${r.num_horses}h</div></div>`;});
+  document.getElementById('race-list').innerHTML=html;
+  if(list.length)selectRace(list[0].key);
 }
 
-// RACE SELECTION
-function selectRace(key) {
-  if (!key) return;
-  currentKey=key;
-  simData=null;
+function selectRace(key){
+  currentKey=key;scratched=new Set();
   document.getElementById('race-select').value=key;
-  const r=races[key];
-  if (r) document.getElementById('analysis-title').textContent=`Race ${r.race_num} · ${r.distance} ${r.surface||''} · ${r.race_class}`;
-  scratched = new Set();
-  document.getElementById('picks-bar').style.display='none';
-  document.getElementById('sim-btn').disabled=false;
-  document.getElementById('analyze-btn').disabled=false;
-  const betBtn = document.getElementById('bet-btn'); if(betBtn) betBtn.disabled=false;
-  const paceBtn = document.getElementById('pace-btn'); if(paceBtn) paceBtn.disabled=false;
-  const projBtn = document.getElementById('proj-btn'); if(projBtn) projBtn.disabled=false;
-  document.getElementById('analysis-status').textContent='';
-  document.querySelectorAll('.race-item').forEach(el=>el.classList.remove('active'));
-  const ai=document.querySelector(`.race-item[data-key="${key}"]`);
-  if (ai) ai.classList.add('active');
-  loadField(key);
+  document.querySelectorAll('.race-item').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
+  document.getElementById('run-btn').disabled=false;
+  const r=races[key]||{};
+  setR(`<div class="placeholder"><strong>Race ${r.race_num||''} · ${r.distance||''} ${r.surface||''} · ${r.race_class||''}</strong>Adjust weights then click <strong style="color:var(--gold)">▶ Run Simulation</strong></div>`);
 }
 
-// FIELD TABLE
-function loadField(key) {
-  if (!uploadId || !key) return;
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span></div>');
-  fetch(`/field?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(key)}`)
-    .then(r=>r.json()).then(data=>{
-      if (data.error) { showError(data.error); return; }
-      renderFieldTable(data.horses);
-    }).catch(()=>{ showError('Could not load field.'); });
+function runSim(){
+  if(!uploadId||!currentKey)return;
+  const w=getW();
+  const tot=Object.values(w).reduce((a,b)=>a+b,0);
+  if(tot!==100){showErr('Weights must total 100% — currently '+tot+'%');return;}
+  document.getElementById('run-btn').disabled=true;
+  setR('<div style="text-align:center;margin-top:4rem;color:var(--muted)"><span class="spinner"></span><br><br>Running 2,000 simulations…</div>');
+  hideErr();
+  const params=new URLSearchParams({upload_id:uploadId,race_key:currentKey,scratched:Array.from(scratched).join(','),weights:JSON.stringify(w)});
+  fetch('/simulate?'+params).then(r=>r.json()).then(d=>{
+    document.getElementById('run-btn').disabled=false;
+    if(d.error){showErr(d.error);return;}
+    renderSim(d);
+  }).catch(err=>{document.getElementById('run-btn').disabled=false;showErr('Error: '+err.message);});
 }
 
-function renderFieldTable(horses) {
-  const styleMap = {'E':'E','EP':'EP','P':'P','PS':'P','S':'S','SS':'S'};
-  let html='<div class="field-hint">Click ✕ to scratch · Click horse row to highlight · Run Simulation for probabilities</div>';
-  html+='<table class="ftable"><thead><tr>';
-  html+='<th style="width:32px;">SCR</th><th>PP</th><th>Horse</th><th>ML</th><th>Spd L3</th><th>TREND</th><th>E1</th><th>LP</th><th>Style</th>';
-  html+='</tr></thead><tbody>';
-  horses.forEach(h=>{
-    const s=styleMap[h.style]||'P';
-    const isScr = scratched.has(String(h.pp));
-    const rowStyle = isScr ? 'opacity:0.35;text-decoration:line-through;' : '';
-    const btnStyle = isScr ? 'background:var(--red);color:#fff;border-color:var(--red);' : 'background:transparent;color:var(--muted);border:1px solid var(--muted);';
-    html+=`<tr style="${rowStyle}" id="frow-${h.pp}">
-      <td><button onclick="toggleScratch('${h.pp}',this)" style="${btnStyle}border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:0.72rem;line-height:1;">✕</button></td>
-      <td class="td-pp">${h.pp}</td>
-      <td class="td-horse" onclick="highlightHorse(this.parentNode)">${h.horse}</td>
-      <td class="td-ml">${h.ml}</td>
-      <td class="td-fig">${h.spd_last3}</td>
-      <td class="td-fig">${h.e1_last3}</td>
-      <td class="td-fig">${h.lp_last3}</td>
-      <td style="font-family:monospace;font-size:0.72rem;color:${h.trend&&h.trend.startsWith('↑')?'#3dba7e':h.trend&&h.trend.startsWith('↓')?'#e05555':'#96afc4'};font-weight:${h.trend&&(h.trend.startsWith('↑')||h.trend.startsWith('↓'))?'bold':'normal'};">${h.trend||'--'}</td>
-      <td><span class="style-badge s-${s}">${h.style||'?'}</span></td>
+function renderSim(d){
+  const r=races[currentKey]||{};
+  let html=`<div class="res-subtitle">Monte Carlo Simulation — 2,000 Races</div>`;
+  html+=`<div class="res-title">Race ${r.race_num||''} · ${r.distance||''} ${r.surface||''} · ${r.race_class||''}</div>`;
+  if(d.pace_advantage){
+    html+=`<div class="pace-box"><b>Pace Scenario:</b> ${d.pace_advantage}`;
+    if(d.key_factor)html+=`<br><b>Note:</b> ${d.key_factor}`;
+    html+=`</div>`;
+  }
+  html+=`<table class="rtable"><thead><tr>
+    <th>Pos</th><th>SCR</th><th>#</th><th>Horse</th><th>Style</th><th>Jockey</th><th>J Win%</th><th>Win %</th><th>Fair Odds</th><th>Morn Line</th>
+  </tr></thead><tbody>`;
+  d.rows.forEach((row,i)=>{
+    const pos=i+1;
+    const pb=pos===1?'p1':pos===2?'p2':pos===3?'p3':'pn';
+    const isSc=scratched.has(String(row.program_num));
+    const jwPct=parseFloat(row.jockey_win_pct);
+    const jwCls=jwPct>=20?'jw-hi':jwPct>=15?'jw-mid':'jw-lo';
+    html+=`<tr class="${pos===1?'top1':''}${isSc?' scr-row':''}">
+      <td><span class="pos-badge ${pb}">${pos}</span></td>
+      <td><button class="scr-btn${isSc?' on':''}" onclick="toggleScr('${row.program_num}',this)">✕</button></td>
+      <td style="color:var(--gold);font-weight:bold;font-family:var(--mono)">${row.program_num}</td>
+      <td class="horse-nm">${row.horse_name}</td>
+      <td style="font-size:0.7rem;color:var(--muted)">${row.style||'?'}</td>
+      <td style="font-size:0.7rem;color:var(--muted)">${row.jockey||''}</td>
+      <td class="${jwCls}">${row.jockey_win_pct||'--'}</td>
+      <td class="win-pct">${row.win_prob_pct}</td>
+      <td class="fair-od">${row.fair_odds}</td>
+      <td class="ml-od">${row.morning_line}</td>
     </tr>`;
   });
-  html+='</tbody></table>';
-  setOutput(html);
+  html+=`</tbody></table>`;
+  if(d.excluded&&d.excluded.length)html+=`<div class="excl">⚠ Excluded (inactive 6+ months): ${d.excluded.join(', ')}</div>`;
+  setR(html);
 }
 
-function highlightHorse(row) {
-  document.querySelectorAll('.ftable tbody tr').forEach(r=>r.classList.remove('sel'));
-  row.classList.add('sel');
+function toggleScr(pp,btn){
+  const k=String(pp);
+  if(scratched.has(k)){scratched.delete(k);btn.classList.remove('on');}
+  else{scratched.add(k);btn.classList.add('on');}
+  runSim();
 }
 
-function toggleScratch(pp, btn) {
-  const key = String(pp);
-  const row = document.getElementById('frow-' + pp);
-  if (scratched.has(key)) {
-    scratched.delete(key);
-    btn.style.background='transparent'; btn.style.color='var(--muted)'; btn.style.borderColor='var(--muted)';
-    if(row){row.style.opacity='1';row.style.textDecoration='none';}
-  } else {
-    scratched.add(key);
-    btn.style.background='var(--red)'; btn.style.color='#fff'; btn.style.borderColor='var(--red)';
-    if(row){row.style.opacity='0.35';row.style.textDecoration='line-through';}
-  }
-}
-
-// TAB SWITCHING
-function switchTab(tab) {
-  currentTab = tab;
-  renderRaceList(Object.values(races));
-}
-
-function renderRaceList(raceList) {
-  if (!raceList||raceList.length===0) { document.getElementById('left-content').innerHTML='<div class="empty"><div class="empty-icon">🏁</div><div>No races loaded</div></div>'; return; }
-  let html='<div class="race-list">';
-  raceList.forEach(r=>{
-    const active=r.key===currentKey?' active':'';
-    const surf=r.surface?' · '+r.surface:'';
-    html+=`<div class="race-item${active}" data-key="${r.key}" onclick="selectRace('${r.key}')">
-      <div class="r-badge">R${r.race_num}</div>
-      <div class="r-meta">${r.distance}${surf}<br><span class="r-sub">${r.race_class} · ${r.num_horses} horses</span></div>
-    </div>`;
-  });
-  html+='</div>';
-  document.getElementById('left-content').innerHTML=html;
-}
-
-// SIMULATION
-function doSimulate() {
-  if (!uploadId||!currentKey) return;
-  const btn=document.getElementById('sim-btn');
-  btn.disabled=true; btn.textContent='⏳ Simulating…';
-  hideError();
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Running 2,000 simulations…</div>');
-  document.getElementById('picks-bar').style.display='none';
-
-  const scratchedList = Array.from(scratched).join(',');
-  fetch(`/simulate?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
-    .then(r=>r.json()).then(data=>{
-      btn.disabled=false; btn.textContent='🎲 Run Simulation';
-      if (data.error) { showError(data.error); return; }
-      simData=data;
-      renderSimResults(data);
-    }).catch(err=>{ btn.disabled=false; btn.textContent='🎲 Run Simulation'; showError('Simulation failed: '+err.message); });
-}
-
-function renderSimResults(data) {
-  const rows=data.rows||[];
-  let html='<div class="sim-wrap">';
-  html+='<div class="sim-title">Monte Carlo Simulation — 2,000 Races</div>';
-  html+='<table class="sim-table"><thead><tr><th>#</th><th>Horse</th><th>Win %</th><th>Fair Odds</th><th>Morning Line</th></tr></thead><tbody>';
-  rows.forEach((r,i)=>{
-    const evCls=r.ev_color==='positive'?'ev-pos':r.ev_color==='negative'?'ev-neg':'ev-neu';
-    const medal=i===0?'🥇 ':i===1?'🥈 ':i===2?'🥉 ':'';
-    html+=`<tr>
-      <td style="color:var(--gold);font-weight:bold;font-family:var(--mono)">${r.program_num}</td>
-      <td style="color:#fff;font-weight:${i<3?'bold':'normal'}">${medal}${r.horse_name}</td>
-      <td style="color:var(--gold2);font-weight:bold;font-family:var(--mono)">${r.win_prob_pct}</td>
-      <td style="font-family:var(--mono)">${r.fair_odds}</td>
-      <td style="font-family:var(--mono);color:var(--muted)">${r.morning_line}</td>
-    </tr>`;
-  });
-  html+='</tbody></table>';
-  if (data.pace_advantage||data.key_factor) {
-    html+='<div class="sim-meta">';
-    if (data.pace_advantage) html+=`<strong style="color:var(--gold)">Pace Advantage:</strong> ${data.pace_advantage}<br>`;
-    if (data.key_factor) html+=`<strong style="color:var(--gold)">Key Factor:</strong> ${data.key_factor}`;
-    html+='</div>';
-  }
-  html+='</div>';
-  setOutput(html);
-}
-
-// AI ANALYSIS
-function doAnalyze() {
-  if (!uploadId||!currentKey||analyzing) return;
-  analyzing=true;
-  document.getElementById('analyze-btn').disabled=true;
-  document.getElementById('analysis-status').innerHTML='<span class="spinner"></span> Analyzing…';
-  document.getElementById('picks-bar').style.display='none';
-  setOutput('');
-  hideError();
-
-  const scratchList = Array.from(scratched).join(',');
-  const url=`/analyze?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchList)}`;
-  const es=new EventSource(url);
-  const out=document.getElementById('analysis-output');
-
-  es.onmessage=function(e) {
-    try {
-      const msg=JSON.parse(e.data);
-      if (msg.ping) return;
-      if (msg.text) { out.textContent+=msg.text; out.scrollTop=out.scrollHeight; }
-      if (msg.picks) {
-        const p=msg.picks, bar=document.getElementById('picks-bar');
-        if (p.win&&p.win.pp) { document.getElementById('pick-win-name').textContent=`#${p.win.pp} ${p.win.name}`; document.getElementById('pick-win-odds').textContent=p.win.odds?`(${p.win.odds})`:''; document.getElementById('pick-win').style.display='flex'; }
-        if (p.place&&p.place.pp) { document.getElementById('pick-place-name').textContent=`#${p.place.pp} ${p.place.name}`; document.getElementById('pick-place-odds').textContent=p.place.odds?`(${p.place.odds})`:''; document.getElementById('pick-place').style.display='flex'; }
-        if (p.show&&p.show.pp) { document.getElementById('pick-show-name').textContent=`#${p.show.pp} ${p.show.name}`; document.getElementById('pick-show-odds').textContent=p.show.odds?`(${p.show.odds})`:''; document.getElementById('pick-show').style.display='flex'; }
-        if (p.exacta) { document.getElementById('pick-exacta-val').textContent=p.exacta; document.getElementById('pick-exacta').style.display='flex'; }
-        if (p.trifecta) { document.getElementById('pick-trifecta-val').textContent=p.trifecta; document.getElementById('pick-trifecta').style.display='flex'; }
-        bar.style.display='flex';
-      }
-      if (msg.error) { showError('Analysis error: '+msg.error); es.close(); doneAnalyzing(); }
-      if (msg.done) { es.close(); doneAnalyzing(); }
-    } catch(err) {}
-  };
-
-  es.onerror=function() {
-    if (analyzing) {
-      const out=document.getElementById('analysis-output');
-      if (!out.textContent||out.textContent.trim().length<50) showError('Connection lost. Please try again.');
-      es.close(); doneAnalyzing();
-    }
-  };
-}
-
-function doneAnalyzing() { analyzing=false; document.getElementById('analyze-btn').disabled=false; document.getElementById('analysis-status').textContent=''; }
-function setOutput(html) { document.getElementById('analysis-output').innerHTML=html; }
-function doPacePlot() {
-  if (!uploadId || !currentKey) return;
-  const btn = document.getElementById('pace-btn');
-  btn.disabled = true; btn.textContent = '⏳ Plotting…';
-  hideError();
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building pace plot…</div>');
-
-  const scratchedList = Array.from(scratched).join(',');
-  fetch(`/pace_plot?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
-    .then(r=>r.json())
-    .then(data=>{
-      btn.disabled=false; btn.textContent='📈 Pace Plot';
-      if (data.error) { showError(data.error); return; }
-      renderPacePlot(data);
-    })
-    .catch(err=>{ btn.disabled=false; btn.textContent='📈 Pace Plot'; showError('Error: '+err.message); });
-}
-
-function renderPacePlot(data) {
-  const horses = data.horses.filter(h => !h.fts && h.e1 && h.e2);
-  const fts    = data.horses.filter(h => h.fts || !h.e1);
-
-  if (!horses.length) { setOutput('<div style="padding:2rem;color:var(--muted)">Not enough pace data to plot this race.</div>'); return; }
-
-  // Find ranges for scaling
-  const e1vals = horses.map(h=>h.e1);
-  const e2vals = horses.map(h=>h.e2);
-  const minE1=Math.min(...e1vals), maxE1=Math.max(...e1vals);
-  const minE2=Math.min(...e2vals), maxE2=Math.max(...e2vals);
-  const padE1=(maxE1-minE1)*0.2||10, padE2=(maxE2-minE2)*0.2||10;
-  const xMin=minE1-padE1, xMax=maxE1+padE1;
-  const yMin=minE2-padE2, yMax=maxE2+padE2;
-
-  const W=680, H=480, ML=60, MR=30, MT=30, MB=50;
-  const plotW=W-ML-MR, plotH=H-MT-MB;
-
-  const toX = e1 => ML + (e1-xMin)/(xMax-xMin)*plotW;
-  const toY = e2 => MT + plotH - (e2-yMin)/(yMax-yMin)*plotH;
-  const parX = toX(data.par);
-
-  // Style colors
-  const styleColor = {'E':'#3dba7e','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'};
-  const styleName  = {'E':'Early Speed','EP':'Early-Presser','P':'Presser','PS':'Press-Stalk','S':'Stalker','SS':'Deep Closer'};
-
-  let svg = `<svg viewBox="0 0 ${W} ${H+120}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:${W}px;background:#0d1b2a;border-radius:8px;">`;
-
-  // Background
-  svg += `<rect width="${W}" height="${H+120}" fill="#0d1b2a"/>`;
-
-  // Quadrant backgrounds
-  const midX = ML + plotW/2, midY = MT + plotH/2;
-  svg += `<rect x="${ML}" y="${MT}" width="${plotW/2}" height="${plotH/2}" fill="rgba(61,186,126,0.04)"/>`;
-  svg += `<rect x="${midX}" y="${MT}" width="${plotW/2}" height="${plotH/2}" fill="rgba(224,85,85,0.04)"/>`;
-  svg += `<rect x="${ML}" y="${midY}" width="${plotW/2}" height="${plotH/2}" fill="rgba(212,168,67,0.04)"/>`;
-  svg += `<rect x="${midX}" y="${midY}" width="${plotW/2}" height="${plotH/2}" fill="rgba(122,179,240,0.04)"/>`;
-
-  // Quadrant labels
-  svg += `<text x="${ML+8}" y="${MT+16}" fill="rgba(61,186,126,0.4)" font-size="10" font-family="monospace">Q1 LONE SPEED</text>`;
-  svg += `<text x="${midX+8}" y="${MT+16}" fill="rgba(224,85,85,0.4)" font-size="10" font-family="monospace">Q2 SPEED DUEL</text>`;
-  svg += `<text x="${ML+8}" y="${midY+16}" fill="rgba(212,168,67,0.4)" font-size="10" font-family="monospace">Q3 STALKERS</text>`;
-  svg += `<text x="${midX+8}" y="${midY+16}" fill="rgba(122,179,240,0.4)" font-size="10" font-family="monospace">Q4 CLOSERS</text>`;
-
-  // Grid lines
-  svg += `<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="1"/>`;
-  svg += `<line x1="${ML}" y1="${MT+plotH}" x2="${ML+plotW}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="1"/>`;
-  svg += `<line x1="${midX}" y1="${MT}" x2="${midX}" y2="${MT+plotH}" stroke="#2a3d52" stroke-width="0.5" stroke-dasharray="4,4"/>`;
-  svg += `<line x1="${ML}" y1="${midY}" x2="${ML+plotW}" y2="${midY}" stroke="#2a3d52" stroke-width="0.5" stroke-dasharray="4,4"/>`;
-
-  // Par line (vertical)
-  svg += `<line x1="${parX}" y1="${MT}" x2="${parX}" y2="${MT+plotH}" stroke="#d4a843" stroke-width="1" stroke-dasharray="6,3" opacity="0.6"/>`;
-  svg += `<text x="${parX+4}" y="${MT+plotH-4}" fill="#d4a843" font-size="9" font-family="monospace" opacity="0.8">PAR</text>`;
-
-  // Diagonal flow band
-  svg += `<line x1="${ML}" y1="${MT+plotH}" x2="${ML+plotW}" y2="${MT}" stroke="rgba(255,255,255,0.06)" stroke-width="20"/>`;
-
-  // Axis labels
-  svg += `<text x="${ML+plotW/2}" y="${H-8}" fill="#96afc4" font-size="11" text-anchor="middle" font-family="sans-serif">← Earlier Position (E1 Pace)   Later Position →</text>`;
-  svg += `<text x="14" y="${MT+plotH/2}" fill="#96afc4" font-size="11" text-anchor="middle" font-family="sans-serif" transform="rotate(-90,14,${MT+plotH/2})">↑ Pace Velocity (E2)</text>`;
-
-  // Plot horses
-  horses.forEach(h => {
-    const x = toX(h.e1);
-    const y = toY(h.e2);
-    const lp = h.lp || 75;
-    const r  = Math.max(14, Math.min(28, (lp - 60) * 0.7 + 14));
-    const col = styleColor[h.style] || '#96afc4';
-    const isSpeed = h.style === 'E' || h.style === 'EP';
-    const shape = isSpeed ? 'rect' : 'circle';
-
-    if (shape === 'rect') {
-      svg += `<rect x="${x-r*0.8}" y="${y-r*0.8}" width="${r*1.6}" height="${r*1.6}" rx="3" fill="${col}" fill-opacity="0.25" stroke="${col}" stroke-width="2"/>`;
-    } else {
-      svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" fill-opacity="0.2" stroke="${col}" stroke-width="2"/>`;
-    }
-    svg += `<text x="${x}" y="${y+4}" fill="${col}" font-size="12" font-weight="bold" text-anchor="middle" font-family="monospace">${h.pp}</text>`;
-
-    // Horse name tooltip on hover (simplified: show near point)
-    svg += `<text x="${x}" y="${y-r-4}" fill="#ffffff" font-size="8" text-anchor="middle" font-family="sans-serif" opacity="0.7">${h.name.split(' ')[0]}</text>`;
-  });
-
-  svg += `</svg>`;
-
-  // Legend + stats
-  const legendItems = Object.entries(styleColor).map(([s,c]) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;">
-      <span style="width:10px;height:10px;border-radius:50%;background:${c};display:inline-block;"></span>
-      <span style="font-size:0.72rem;color:#d4c9b0;">${styleName[s]}</span>
-    </span>`).join('');
-
-  // FTS horses note
-  let ftsNote = '';
-  if (fts.length) {
-    ftsNote = `<div style="font-size:0.75rem;color:#96afc4;margin-top:0.5rem;">
-      Not plotted (insufficient data): ${fts.map(h=>`#${h.pp} ${h.name}`).join(', ')}
-    </div>`;
-  }
-
-  const html = `<div style="padding:1rem 1.2rem;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;">
-      <div>
-        <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:#96afc4;">TrackIQ Pace Plot</div>
-        <div style="font-size:0.9rem;font-weight:bold;color:#fff;">Race ${data.race_num} · ${data.distance} ${data.surface} · ${data.race_class}</div>
-      </div>
-      <div style="display:flex;gap:1rem;align-items:center;">
-        <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#96afc4;text-transform:uppercase;letter-spacing:0.1em;">Pace Contention</div>
-          <div style="font-size:0.85rem;font-weight:bold;color:${data.contention_color};">${data.contention}</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:0.65rem;color:#96afc4;text-transform:uppercase;letter-spacing:0.1em;">Par Line</div>
-          <div style="font-size:0.85rem;font-weight:bold;color:#d4a843;">${data.par}</div>
-        </div>
-      </div>
-    </div>
-    ${svg}
-    <div style="margin-top:0.8rem;display:flex;flex-wrap:wrap;gap:0.2rem;">${legendItems}</div>
-    <div style="font-size:0.72rem;color:#96afc4;margin-top:0.5rem;">
-      Circle/Square size = Finishing kick (LP pace). Squares = Early speed. Circles = Off-pace. Dashed gold line = Par.
-    </div>
-    ${ftsNote}
-    <div style="margin-top:1rem;border-top:1px solid var(--border);padding-top:0.8rem;">
-      <div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;">Horse Directory</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.3rem;">
-        ${data.horses.map(h => {
-          const col = {'E':'#3dba7e','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'}[h.style] || '#96afc4';
-          const ftsTag = h.fts ? ' <span style="font-size:0.6rem;color:#96afc4;">[no data]</span>' : '';
-          return `<div style="display:flex;align-items:center;gap:0.5rem;">
-            <span style="background:${col};color:#000;font-weight:bold;font-size:0.72rem;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${h.pp}</span>
-            <span style="font-size:0.78rem;color:#fff;font-weight:${h.fts?'normal':'bold'};">${h.name}${ftsTag}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  </div>`;
-
-  setOutput(html);
-}
-
-function doPaceProjection() {
-  if (!uploadId || !currentKey) return;
-  const btn = document.getElementById('proj-btn');
-  btn.disabled = true; btn.textContent = '⏳ Projecting…';
-  hideError();
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building pace projection…</div>');
-
-  const scratchedList = Array.from(scratched).join(',');
-  fetch(`/pace_projection?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&scratched=${encodeURIComponent(scratchedList)}`)
-    .then(r=>r.json())
-    .then(data=>{
-      btn.disabled=false; btn.textContent='🏁 Pace Projection';
-      if (data.error) { showError(data.error); return; }
-      renderPaceProjection(data);
-    })
-    .catch(err=>{ btn.disabled=false; btn.textContent='🏁 Pace Projection'; showError('Error: '+err.message); });
-}
-
-function renderPaceProjection(data) {
-  const horses = data.horses;
-  const styleColor = {'E':'#3dba7e','E/P':'#d4a843','EP':'#d4a843','P':'#7ab3f0','PS':'#96afc4','S':'#e05555','SS':'#c084fc'};
-
-  let html = '<div style="padding:1.2rem 1.5rem;">';
-
-  // Header
-  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem;">
-    <div>
-      <div style="font-size:0.7rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);">Pace Projection — Last 4 Races</div>
-      <div style="font-size:0.9rem;font-weight:bold;color:#fff;">Race ${data.race_num} · ${data.distance} ${data.surface}</div>
-    </div>
-    <div style="background:rgba(0,0,0,0.3);border:1px solid ${data.scenario_color};border-radius:6px;padding:0.5rem 0.9rem;max-width:320px;">
-      <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;">Pace Scenario</div>
-      <div style="font-size:0.82rem;font-weight:bold;color:${data.scenario_color};">${data.scenario}</div>
-    </div>
-  </div>`;
-
-  // Main projection grid
-  const calls = ['PP', 'C1', 'C2', 'STR', 'FIN'];
-  const callKeys = ['pp','c1','c2','str','fin'];
-  const maxPos = Math.max(...horses.filter(h=>h.avg).map(h=>Math.max(...callKeys.map(k=>h.avg[k]||0))), 1);
-
-  html += '<div style="overflow-x:auto;">';
-  html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
-  html += '<thead><tr style="border-bottom:1px solid var(--gold);">';
-  html += '<th style="text-align:left;padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">PP</th>';
-  html += '<th style="text-align:left;padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Horse</th>';
-  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">ML</th>';
-  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Style</th>';
-  calls.forEach(c => {
-    html += `<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;text-align:center;">${c}</th>`;
-  });
-  html += '<th style="padding:6px 8px;color:var(--gold);font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;">Last 4 Running Lines</th>';
-  html += '</tr></thead><tbody>';
-
-  horses.forEach((h, idx) => {
-    const col = styleColor[h.style] || '#96afc4';
-    const rowBg = idx % 2 === 0 ? 'var(--slate2)' : 'var(--slate)';
-
-    html += `<tr style="background:${rowBg};border-bottom:1px solid rgba(42,61,82,0.4);">`;
-    html += `<td style="padding:6px 8px;color:var(--gold);font-weight:bold;font-family:monospace;">${h.pp}</td>`;
-    html += `<td style="padding:6px 8px;color:#fff;font-weight:bold;">${h.name}</td>`;
-    html += `<td style="padding:6px 8px;color:var(--muted);text-align:center;font-family:monospace;">${h.ml||'--'}</td>`;
-    html += `<td style="padding:6px 8px;text-align:center;"><span style="background:${col}22;color:${col};border:1px solid ${col};border-radius:3px;padding:1px 5px;font-size:0.7rem;font-weight:bold;">${h.style||'?'}</span></td>`;
-
-    if (h.fts || !h.avg) {
-      calls.forEach(() => { html += '<td style="padding:6px 8px;text-align:center;color:var(--muted);">--</td>'; });
-      html += '<td style="padding:6px 8px;color:var(--muted);font-size:0.72rem;">First time starter / no data</td>';
-    } else {
-      callKeys.forEach((k,i) => {
-        const val = h.avg[k];
-        // Color: position 1-2 = green, 3-4 = gold, 5+ = muted
-        const posColor = val <= 2 ? '#3dba7e' : val <= 4 ? '#d4a843' : val <= 6 ? 'var(--text)' : 'var(--muted)';
-        html += `<td style="padding:6px 8px;text-align:center;color:${posColor};font-weight:${val<=2?'bold':'normal'};font-family:monospace;">${val||'--'}</td>`;
-      });
-
-      // Running lines
-      const lines = (h.lines||[]).slice(0,4).map(l => {
-        const pos = [l.pp,l.c1,l.c2,l.str,l.fin].map(p=>p||'-').join('-');
-        const spd = l.spd ? ` (${l.spd})` : '';
-        return `<span style="font-family:monospace;font-size:0.7rem;color:var(--muted);margin-right:8px;">${pos}${spd}</span>`;
-      }).join('');
-      html += `<td style="padding:6px 8px;">${lines}</td>`;
-    }
-    html += '</tr>';
-  });
-
-  html += '</tbody></table></div>';
-
-  // Legend
-  html += `<div style="margin-top:0.8rem;font-size:0.7rem;color:var(--muted);">
-    PP=Pre-pace · C1=First call · C2=Second call · STR=Stretch · FIN=Finish · Numbers = position in field · Avg of last 4 races · (speed fig in parens)
-  </div>`;
-
-  // FTS note
-  const fts = horses.filter(h=>h.fts);
-  if (fts.length) {
-    html += `<div style="margin-top:0.5rem;font-size:0.72rem;color:var(--muted);">No data: ${fts.map(h=>`#${h.pp} ${h.name}`).join(', ')}</div>`;
-  }
-
-  html += '</div>';
-  setOutput(html);
-}
-
-function doBet() {
-  if (!uploadId || !currentKey) return;
-  const btn = document.getElementById('bet-btn');
-  btn.disabled = true; btn.textContent = '⏳ Building…';
-  hideError();
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building exotic wager recommendations…</div>');
-
-  fetch(`/bet_recommendation?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&bankroll=1000`)
-    .then(r=>r.json())
-    .then(data=>{
-      btn.disabled=false; btn.textContent='💰 Bet Rec';
-      if (data.error) { showError(data.error); return; }
-
-      const raceTitle = document.getElementById('analysis-title').textContent;
-      let html = '<div style="padding:1.2rem 1.5rem;">';
-      html += `<div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Exotic Wager Recommendations — ${raceTitle}</div>`;
-
-      // LIVE ODDS INPUT PANEL
-      html += `<div style="background:#0d2a1a;border:1px solid #3dba7e;border-radius:6px;padding:1rem 1.2rem;margin-bottom:1.2rem;">`;
-      html += `<div style="font-size:0.75rem;font-weight:bold;color:#3dba7e;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.6rem;">📡 Live Tote Odds (enter before post)</div>`;
-      html += `<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.8rem;">Check TVG, TwinSpires, or NYRA Bets 5-10 min before post. Enter current odds below to find overlays.</div>`;
-      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.5rem;" id="live-odds-grid">`;
-
-      if (data.sim_rows) {
-        data.sim_rows.forEach(r => {
-          html += `<div style="background:var(--slate);border:1px solid var(--border);border-radius:4px;padding:0.4rem 0.6rem;">`;
-          html += `<div style="font-size:0.7rem;color:var(--muted);">#${r.pp} ${r.name.substring(0,14)}</div>`;
-          html += `<div style="display:flex;align-items:center;gap:0.3rem;margin-top:0.25rem;">`;
-          html += `<input type="number" id="odds-${r.pp}" placeholder="${r.ml}" step="0.5" min="1"
-                    style="width:60px;background:var(--navy);border:1px solid var(--border);border-radius:3px;color:#fff;font-size:0.8rem;padding:0.2rem 0.3rem;font-family:monospace;"
-                    onchange="recalcEV()">`;
-          html += `<span style="font-size:0.68rem;color:var(--muted);">-1</span>`;
-          html += `<span id="ev-${r.pp}" style="font-size:0.68rem;margin-left:0.2rem;"></span>`;
-          html += `</div></div>`;
-        });
-      }
-
-      html += `</div>`;
-      html += `<div style="margin-top:0.8rem;display:flex;gap:0.6rem;align-items:center;">`;
-      html += `<button onclick="recalcEV()" style="background:#3dba7e;border:none;border-radius:4px;color:#000;font-size:0.78rem;font-weight:bold;padding:0.35rem 0.8rem;cursor:pointer;">↻ Update Odds</button>`;
-      html += `<div id="live-summary" style="font-size:0.78rem;color:var(--muted);"></div>`;
-      html += `</div></div>`;
-
-      // EXOTIC RECS
-      data.recs.forEach(rec => {
-        html += `<div style="background:var(--slate2);border:1px solid var(--border);border-radius:6px;padding:0.9rem 1.1rem;margin-bottom:0.8rem;">`;
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">`;
-        html += `<span style="font-size:0.75rem;font-weight:bold;letter-spacing:0.12em;color:var(--gold)">${rec.type}</span>`;
-        html += `<span style="background:var(--navy);color:var(--gold2);font-family:monospace;font-size:0.85rem;padding:0.15rem 0.5rem;border-radius:3px;">$${typeof rec.total === 'number' ? rec.total.toFixed(2) : rec.total}</span>`;
-        html += `</div>`;
-        html += `<div style="font-size:0.88rem;color:#fff;margin-bottom:0.3rem;">${rec.desc}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);">${rec.note}</div>`;
-        if (rec.combos) {
-          html += `<div style="margin-top:0.6rem;">`;
-          rec.combos.forEach(c => {
-            html += `<div style="font-size:0.78rem;color:var(--text);font-family:monospace;padding:0.15rem 0;">#${c.key_pp}→#${c.under_pp} ${c.under_name} — $${c.bet}</div>`;
-          });
-          html += `</div>`;
-        }
-        if (rec.legs) {
-          html += `<div style="margin-top:0.6rem;">`;
-          rec.legs.forEach(leg => {
-            const horses = leg.horses.map(h => `#${h.pp} ${h.name}`).join(' / ');
-            html += `<div style="font-size:0.78rem;color:var(--text);">R${leg.race}: ${horses}</div>`;
-          });
-          html += `</div>`;
-        }
-        html += `</div>`;
-      });
-
-      if (data.key_horse) {
-        const k = data.key_horse;
-        html += `<div style="border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.2rem;">`;
-        html += `<div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Key Horse (Sim)</div>`;
-        html += `<div style="display:flex;gap:1rem;align-items:center;">`;
-        html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
-        html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);" id="key-horse-ev">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml}</div></div></div></div>`;
-      }
-
-      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Enter live odds above to identify overlays</div>`;
-      html += `</div>`;
-      setOutput(html);
-
-      // Store sim data for EV recalc
-      window._simRows = data.sim_rows || [];
-    })
-    .catch(err=>{ btn.disabled=false; btn.textContent='💰 Bet Rec'; showError('Error: '+err.message); });
-}
-
-function recalcEV() {
-  if (!window._simRows || !window._simRows.length) return;
-
-  let valueBets = [];
-  window._simRows.forEach(r => {
-    const input = document.getElementById(`odds-${r.pp}`);
-    if (!input || !input.value) return;
-
-    const liveOdds = parseFloat(input.value);
-    const winProb  = r.win_prob_raw;
-    const ev       = (winProb * (liveOdds + 1)) - 1;
-    const evEl     = document.getElementById(`ev-${r.pp}`);
-
-    if (evEl) {
-      if (ev >= 0.15) {
-        evEl.textContent = `+${(ev*100).toFixed(0)}%`;
-        evEl.style.color = '#3dba7e';
-        evEl.style.fontWeight = 'bold';
-        valueBets.push({pp: r.pp, name: r.name, ev: ev, odds: liveOdds, win_pct: r.win_prob_pct});
-      } else if (ev < -0.10) {
-        evEl.textContent = `${(ev*100).toFixed(0)}%`;
-        evEl.style.color = '#e05555';
-        evEl.style.fontWeight = 'normal';
-      } else {
-        evEl.textContent = 'Fair';
-        evEl.style.color = '#96afc4';
-        evEl.style.fontWeight = 'normal';
-      }
-    }
-  });
-
-  const summary = document.getElementById('live-summary');
-  if (summary) {
-    if (valueBets.length > 0) {
-      const best = valueBets.sort((a,b) => b.ev - a.ev)[0];
-      summary.innerHTML = `<span style="color:#3dba7e;font-weight:bold;">✅ ${valueBets.length} overlay(s) found — Best: #${best.pp} ${best.name} at ${best.odds}-1 (Fair: ${best.fair})</span>`;
-    } else {
-      summary.innerHTML = `<span style="color:#e05555;">No overlays at current odds — consider passing</span>`;
-    }
-  }
-}
-
-window.addEventListener("load", () => initSampleCards());
-
-function showError(msg) {
-  if (!uploadId || !currentKey) return;
-  const btn = document.getElementById('bet-btn');
-  btn.disabled = true; btn.textContent = '⏳ Building…';
-  hideError();
-  setOutput('<div style="text-align:center;color:var(--muted);margin-top:3rem;"><span class="spinner"></span><br><br>Building exotic wager recommendations…</div>');
-
-  fetch(`/bet_recommendation?upload_id=${encodeURIComponent(uploadId)}&race_key=${encodeURIComponent(currentKey)}&bankroll=1000`)
-    .then(r=>r.json())
-    .then(data=>{
-      btn.disabled=false; btn.textContent='💰 Bet Rec';
-      if (data.error) { showError(data.error); return; }
-
-      const raceTitle = document.getElementById('analysis-title').textContent;
-      let html = '<div style="padding:1.2rem 1.5rem;">';
-      html += `<div style="font-size:0.7rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Exotic Wager Recommendations — ${raceTitle}</div>`;
-
-      data.recs.forEach(rec => {
-        html += `<div style="background:var(--slate2);border:1px solid var(--border);border-radius:6px;padding:0.9rem 1.1rem;margin-bottom:0.8rem;">`;
-        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">`;
-        html += `<span style="font-size:0.75rem;font-weight:bold;letter-spacing:0.12em;color:var(--gold)">${rec.type}</span>`;
-        html += `<span style="background:var(--navy);color:var(--gold2);font-family:monospace;font-size:0.85rem;padding:0.15rem 0.5rem;border-radius:3px;">$${typeof rec.total === 'number' ? rec.total.toFixed(2) : rec.total}</span>`;
-        html += `</div>`;
-        html += `<div style="font-size:0.88rem;color:#fff;margin-bottom:0.3rem;">${rec.desc}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);">${rec.note}</div>`;
-        if (rec.combos) {
-          html += `<div style="margin-top:0.6rem;">`;
-          rec.combos.forEach(c => {
-            html += `<div style="font-size:0.78rem;color:var(--text);font-family:monospace;padding:0.15rem 0;">#${c.key_pp}→#${c.under_pp} ${c.under_name} — $${c.bet}</div>`;
-          });
-          html += `</div>`;
-        }
-        if (rec.legs) {
-          html += `<div style="margin-top:0.6rem;">`;
-          rec.legs.forEach(leg => {
-            const horses = leg.horses.map(h => `#${h.pp} ${h.name}`).join(' / ');
-            html += `<div style="font-size:0.78rem;color:var(--text);">R${leg.race}: ${horses}</div>`;
-          });
-          html += `</div>`;
-        }
-        html += `</div>`;
-      });
-
-      if (data.key_horse) {
-        const k = data.key_horse;
-        html += `<div style="border-top:1px solid var(--border);padding-top:0.8rem;margin-top:0.2rem;">`;
-        html += `<div style="font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Key Horse</div>`;
-        html += `<div style="display:flex;gap:1rem;align-items:center;">`;
-        html += `<span style="font-size:1.3rem;font-weight:bold;color:var(--gold);font-family:monospace">#${k.pp}</span>`;
-        html += `<div><div style="font-size:0.95rem;font-weight:bold;color:#fff">${k.name}</div>`;
-        html += `<div style="font-size:0.75rem;color:var(--muted);">Win: ${k.win_pct} | Fair: ${k.fair} | ML: ${k.ml}</div></div></div></div>`;
-      }
-
-      html += `<div style="font-size:0.68rem;color:var(--muted);margin-top:1rem;border-top:1px solid var(--border);padding-top:0.6rem;">$1,000 bankroll · Exacta $4/combo · Trifecta $1/combo · Pick 3 $0.50/combo · Run Simulation first</div>`;
-      html += `</div>`;
-      setOutput(html);
-    })
-    .catch(err=>{ btn.disabled=false; btn.textContent='💰 Bet Rec'; showError('Error: '+err.message); });
-}
-
-window.addEventListener("load", () => initSampleCards());
-
-function showError(msg) { const el=document.getElementById('error-bar'); el.textContent=msg; el.style.display='block'; }
-function hideError() { document.getElementById('error-bar').style.display='none'; }
+function setR(html){document.getElementById('results').innerHTML=html;}
+function showErr(msg){const e=document.getElementById('error-bar');e.textContent=msg;e.style.display='block';}
+function hideErr(){document.getElementById('error-bar').style.display='none';}
 </script>
 </body>
 </html>

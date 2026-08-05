@@ -251,7 +251,7 @@ def simulate():
     if race_key not in races:
         return jsonify({"error": "Race not found."}), 400
 
-    race     = races[race_key]
+    race      = races[race_key]
     scratched = [s.strip() for s in request.args.get("scratched", "").split(",") if s.strip()]
 
     # Filter out scratched horses
@@ -260,7 +260,29 @@ def simulate():
         race = copy.deepcopy(race)
         race["horses"] = [h for h in race.get("horses", []) if str(h.get("program_num","")) not in scratched]
 
-    result = run_simulation(race, ANTHROPIC_API_KEY)
+    # Accept user-defined weights from frontend
+    user_weights = None
+    weights_json = request.args.get("weights", "")
+    if weights_json:
+        try:
+            raw = json.loads(weights_json)
+            # Convert from percentage ints to floats
+            user_weights = {k: int(v)/100 for k, v in raw.items()}
+        except Exception:
+            pass
+
+    result = run_simulation(race, ANTHROPIC_API_KEY, user_weights=user_weights)
+
+    # Add style and jockey to each row from horse data
+    horse_map = {str(h.get("program_num","")): h for h in race.get("horses",[])}
+    for row in result.get("rows", []):
+        h = horse_map.get(str(row["program_num"]), {})
+        row["style"]   = h.get("bris_run_style", "?")
+        row["jockey"]  = h.get("jockey", "")
+        j_starts = h.get("jockey_starts") or 0
+        j_wins   = h.get("jockey_wins")   or 0
+        row["jockey_win_pct"] = f"{j_wins/j_starts*100:.0f}" if j_starts else "N/A"
+
     return jsonify(result)
 
 

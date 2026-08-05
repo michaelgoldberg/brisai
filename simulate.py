@@ -373,14 +373,14 @@ def score_horse(horse, race_info, weights):
     return max(raw * trend_mult * stretch_mult, 0.1)
 
 
-def run_simulation(race_data, api_key, n_sims=2000):
+def run_simulation(race_data, api_key, n_sims=2000, user_weights=None):
     race_info = race_data.get("race_info", {})
     horses    = race_data.get("horses", [])
 
     if not horses:
         return {"error": "No horses in race data."}
 
-    weights  = get_weights(race_info)
+    weights  = user_weights if user_weights else get_weights(race_info)
     scored   = []
     excluded = []
 
