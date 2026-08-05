@@ -95,10 +95,35 @@ table.rtable td{padding:0.38rem 0.6rem;vertical-align:middle;}
   <input type="file" id="fi" accept=".DRF,.drf,.bris" style="display:none" onchange="uploadFile(event)">
   <select id="sample-select" onchange="loadSample(this.value)" style="max-width:240px;"><option value="">— or pick a sample card —</option></select>
   <button class="btn-run" id="run-btn" onclick="runSim()" disabled>▶ Run Simulation</button>
+  <span id="sim-counter" style="font-size:0.72rem;color:var(--muted);white-space:nowrap;"></span>
 </div>
 <div id="error-bar"></div>
 
-<div class="body">
+
+<!-- GATE -->
+<div id="gate" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:var(--navy);">
+  <div style="background:var(--slate);border:1px solid var(--border);border-radius:10px;padding:2.5rem 3rem;width:100%;max-width:420px;text-align:center;">
+    <div style="font-size:2rem;font-weight:bold;color:var(--gold);letter-spacing:0.08em;">TrackIQ</div>
+    <div style="font-size:0.7rem;letter-spacing:0.25em;color:var(--muted);text-transform:uppercase;margin-top:2px;margin-bottom:1.5rem;">Advanced Race Simulator</div>
+    <div style="font-size:1.1rem;color:#fff;font-weight:bold;margin-bottom:0.3rem;">Start Your Free Trial</div>
+    <div style="font-size:0.85rem;color:var(--muted);margin-bottom:1.5rem;">50 simulation runs · No credit card required</div>
+    <label style="display:block;font-size:0.7rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;text-align:left;margin-bottom:0.3rem;">First Name</label>
+    <input id="g-name" type="text" placeholder="Jane" autocomplete="given-name"
+      style="width:100%;background:var(--navy);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.95rem;padding:0.6rem 0.85rem;font-family:inherit;outline:none;margin-bottom:0.8rem;">
+    <label style="display:block;font-size:0.7rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;text-align:left;margin-bottom:0.3rem;">Email Address</label>
+    <input id="g-email" type="email" placeholder="you@example.com" autocomplete="email"
+      style="width:100%;background:var(--navy);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.95rem;padding:0.6rem 0.85rem;font-family:inherit;outline:none;">
+    <button onclick="doRegister()" id="gate-btn"
+      style="width:100%;margin-top:1.2rem;background:var(--gold);color:var(--navy);border:none;border-radius:6px;font-size:1rem;font-weight:bold;padding:0.75rem;cursor:pointer;font-family:Georgia,serif;">
+      Start Simulating →
+    </button>
+    <div id="gate-err" style="display:none;margin-top:0.8rem;background:rgba(224,85,85,0.15);border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:0.82rem;padding:0.5rem 0.8rem;text-align:left;"></div>
+    <div style="margin-top:1rem;font-size:0.72rem;color:var(--muted);">Questions? <a href="mailto:mgoldberg@emarketingsg.com" style="color:var(--gold);">mgoldberg@emarketingsg.com</a></div>
+  </div>
+</div>
+<!-- END GATE -->
+
+<div id="app-wrap" style="display:none;flex-direction:column;flex:1;overflow:hidden;"><div class="body">
   <div id="left">
     <div class="left-title">Races</div>
     <div id="race-list"><div style="padding:1rem;color:var(--muted);font-size:0.76rem;">Load a card to see races</div></div>
@@ -195,12 +220,12 @@ function uploadFile(e){
   }).catch(err=>showErr(err.message));
 }
 
-window.addEventListener('load',()=>{
-  fetch('/sample_cards').then(r=>r.json()).then(d=>{
+function initSamples(){
+  // loaded via initSamples.then(r=>r.json()).then(d=>{
     const sel=document.getElementById('sample-select');
     d.cards.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label;sel.appendChild(o);});
   }).catch(()=>{});
-});
+}
 
 function loadSample(id){
   if(!id)return;
@@ -235,6 +260,7 @@ function selectRace(key){
 }
 
 function runSim(){
+  if (!checkSimLimit()) return;
   if(!uploadId||!currentKey)return;
   const w=getW();
   const tot=Object.values(w).reduce((a,b)=>a+b,0);
@@ -251,6 +277,10 @@ function runSim(){
 }
 
 function renderSim(d){
+  simCount++;
+  updateSimCounter();
+  // Notify server
+  fetch('/increment_sim', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})}).catch(()=>{});
   const r=races[currentKey]||{};
   let html=`<div class="res-subtitle">Monte Carlo Simulation — 2,000 Races</div>`;
   html+=`<div class="res-title">Race ${r.race_num||''} · ${r.distance||''} ${r.surface||''} · ${r.race_class||''}</div>`;
@@ -293,9 +323,87 @@ function toggleScr(pp,btn){
   runSim();
 }
 
+// ── GATE ──────────────────────────────────────────────────────────────────
+let simCount = 0;
+let simLimit = 50;
+let userName = '';
+
+function doRegister() {
+  const name  = document.getElementById('g-name').value.trim();
+  const email = document.getElementById('g-email').value.trim();
+  const btn   = document.getElementById('gate-btn');
+  const err   = document.getElementById('gate-err');
+  err.style.display = 'none';
+
+  if (!name) { showGateErr('Please enter your first name.'); return; }
+  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+
+  fetch('/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, email})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.blocked) {
+      showGateErr('Your trial has ended (50 simulations used). Contact mgoldberg@emarketingsg.com to upgrade.');
+      btn.disabled = false; btn.textContent = 'Start Simulating →';
+      return;
+    }
+    if (data.error) {
+      showGateErr(data.error);
+      btn.disabled = false; btn.textContent = 'Start Simulating →';
+      return;
+    }
+    // Success
+    simCount = data.sim_count || 0;
+    simLimit = data.sim_limit || 50;
+    userName = name;
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app-wrap').style.display = 'flex';
+    updateSimCounter();
+    initSamples();
+  })
+  .catch(() => {
+    showGateErr('Connection error — please try again.');
+    btn.disabled = false; btn.textContent = 'Start Simulating →';
+  });
+}
+
+function showGateErr(msg) {
+  const e = document.getElementById('gate-err');
+  e.textContent = msg; e.style.display = 'block';
+}
+
+function updateSimCounter() {
+  const remaining = simLimit - simCount;
+  const el = document.getElementById('sim-counter');
+  if (!el) return;
+  if (remaining <= 5) {
+    el.innerHTML = `<span style="color:var(--red);font-weight:bold;">${remaining} simulations remaining</span>`;
+  } else {
+    el.textContent = `${remaining} of ${simLimit} runs remaining`;
+  }
+}
+
+function checkSimLimit() {
+  if (simCount >= simLimit) {
+    showError('Trial limit reached (50 simulations). Contact mgoldberg@emarketingsg.com to upgrade.');
+    return false;
+  }
+  return true;
+}
+
+['g-name','g-email'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+});
+
 function setR(html){document.getElementById('results').innerHTML=html;}
 function showErr(msg){const e=document.getElementById('error-bar');e.textContent=msg;e.style.display='block';}
 function hideErr(){document.getElementById('error-bar').style.display='none';}
 </script>
-</body>
+</div></body>
 </html>

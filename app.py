@@ -81,51 +81,62 @@ def index():
     return render_template("index.html")
 
 
+SIM_LIMIT = 50
+
 @app.route("/register", methods=["POST"])
 def register():
-    data    = request.get_json() or {}
-    name    = data.get("name", "").strip()
-    email   = data.get("email", "").strip().lower()
-    company = data.get("company", "").strip()
+    data  = request.get_json() or {}
+    name  = data.get("name", "").strip()
+    email = data.get("email", "").strip().lower()
 
     if not name or not email:
         return jsonify({"error": "Name and email are required."}), 400
 
-    today     = datetime.now(timezone.utc).date()
-    today_str = today.strftime("%Y-%m-%d")
+    today_str = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
     existing  = _airtable_find_prospect(email)
 
     if existing:
-        fields = existing["fields"]
+        fields    = existing["fields"]
+        sim_count = int(fields.get("SimCount") or 0)
+
         if fields.get("Blocked"):
-            return jsonify({"expired": True, "message": "Your access has been suspended."})
-        expires_str = fields.get("ExpiresAt", "")
-        if expires_str:
-            try:
-                expires_date = datetime.strptime(expires_str[:10], "%Y-%m-%d").date()
-                if today > expires_date:
-                    return jsonify({"expired": True, "message": f"Your {TRIAL_DAYS}-day trial has ended."})
-            except ValueError:
-                pass
+            return jsonify({"blocked": True})
+        if sim_count >= SIM_LIMIT:
+            return jsonify({"blocked": True})
+
         _airtable_update_prospect(existing["id"], {
-            "LastAccess":  today_str,
+            "LastAccess": today_str,
             "AccessCount": (fields.get("AccessCount") or 0) + 1,
         })
     else:
-        expires_date = today + timedelta(days=TRIAL_DAYS)
+        sim_count = 0
         _airtable_create_prospect({
             "Name":        name,
             "Email":       email,
-            "Company":     company,
             "FirstOpened": today_str,
-            "ExpiresAt":   expires_date.strftime("%Y-%m-%d"),
             "LastAccess":  today_str,
             "AccessCount": 1,
+            "SimCount":    0,
+            "SimLimit":    SIM_LIMIT,
         })
 
-    session["name"]    = name
-    session["email"]   = email
-    session["company"] = company
+    session["name"]  = name
+    session["email"] = email
+    return jsonify({"ok": True, "sim_count": sim_count, "sim_limit": SIM_LIMIT})
+
+
+@app.route("/increment_sim", methods=["POST"])
+def increment_sim():
+    email = session.get("email", "")
+    if not email:
+        return jsonify({"ok": False}), 200
+    existing = _airtable_find_prospect(email)
+    if existing:
+        fields    = existing["fields"]
+        sim_count = int(fields.get("SimCount") or 0) + 1
+        _airtable_update_prospect(existing["id"], {"SimCount": sim_count})
+        if sim_count >= SIM_LIMIT:
+            _airtable_update_prospect(existing["id"], {"Blocked": True})
     return jsonify({"ok": True})
 
 
