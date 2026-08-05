@@ -356,7 +356,7 @@ def score_horse(horse, race_info, weights):
     # ── WEIGHTED SCORE ────────────────────────────────────────────────────────
     raw = (
         weights["pace_e1"]        * e1_norm        +
-        weights["pace_e2"]        * e2_norm        +
+        weights.get("pace_e2", 0.0)   * e2_norm        +
         weights["pace_lp"]        * lp_norm        +
         weights["pos_c1"]         * c1_norm        +
         weights["pos_str"]        * str_norm       +
