@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrackIQ — Get Started</title>
+<style>
+:root{--navy:#0d1b2a;--gold:#d4a843;--gold2:#f0d060;--slate:#1e2d40;--slate2:#243447;--text:#d4c9b0;--muted:#96afc4;--green:#3dba7e;--red:#e05555;--border:#2a3d52;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--navy);color:var(--text);font-family:Georgia,serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;}
+
+.card{background:var(--slate);border:1px solid var(--border);border-radius:12px;width:100%;max-width:480px;overflow:hidden;}
+
+.card-header{background:var(--gold);padding:1.5rem 2rem;text-align:center;}
+.logo{font-size:1.8rem;font-weight:bold;color:var(--navy);letter-spacing:0.08em;}
+.logo-sub{font-size:0.65rem;letter-spacing:0.25em;color:rgba(13,27,42,0.7);text-transform:uppercase;margin-top:2px;}
+.product{font-size:1rem;font-weight:bold;color:var(--navy);margin-top:0.5rem;}
+
+.card-body{padding:1.8rem 2rem;}
+
+.offer-box{background:var(--navy);border:1px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-bottom:1.5rem;text-align:center;}
+.offer-price{font-size:1.8rem;font-weight:bold;color:var(--gold);font-family:Georgia,serif;}
+.offer-reg{font-size:0.8rem;color:var(--muted);text-decoration:line-through;margin-top:2px;}
+.offer-details{font-size:0.82rem;color:var(--green);margin-top:0.4rem;line-height:1.6;}
+.offer-tracks{font-size:0.75rem;color:var(--muted);margin-top:0.3rem;}
+
+label{display:block;font-size:0.68rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem;margin-top:0.9rem;}
+label:first-of-type{margin-top:0;}
+input,select{width:100%;background:var(--navy);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.95rem;padding:0.65rem 0.9rem;font-family:inherit;outline:none;}
+input:focus,select:focus{border-color:var(--gold);}
+select option{background:var(--navy);}
+
+.track-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.3rem;}
+.track-btn{background:var(--navy);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:0.82rem;padding:0.5rem 0.8rem;cursor:pointer;text-align:center;transition:all 0.15s;font-family:inherit;}
+.track-btn:hover{border-color:var(--gold);color:var(--gold);}
+.track-btn.selected{background:rgba(212,168,67,0.15);border-color:var(--gold);color:var(--gold);font-weight:bold;}
+
+.divider{border:none;border-top:1px solid var(--border);margin:1.2rem 0;}
+
+.btn-pay{width:100%;background:#0070ba;color:#fff;border:none;border-radius:8px;font-size:1.05rem;font-weight:bold;padding:0.9rem;cursor:pointer;font-family:Georgia,serif;margin-top:1rem;transition:background 0.15s;}
+.btn-pay:hover{background:#005a94;}
+.btn-pay:disabled{opacity:0.5;cursor:not-allowed;}
+
+.err{display:none;background:rgba(224,85,85,0.12);border:1px solid var(--red);border-radius:6px;color:var(--red);font-size:0.82rem;padding:0.5rem 0.8rem;margin-top:0.8rem;}
+
+.step2{display:none;}
+.step2 .success-icon{font-size:3rem;text-align:center;margin-bottom:0.8rem;}
+.step2 h2{color:#fff;font-size:1.1rem;text-align:center;margin-bottom:0.5rem;}
+.step2 p{font-size:0.85rem;color:var(--muted);text-align:center;line-height:1.6;margin-bottom:1.2rem;}
+.btn-paypal{display:block;background:#0070ba;color:#fff;border-radius:8px;font-size:1rem;font-weight:bold;padding:0.85rem;text-decoration:none;text-align:center;margin-bottom:0.6rem;}
+.btn-activate{display:block;background:var(--green);color:#000;border-radius:8px;font-size:0.95rem;font-weight:bold;padding:0.75rem;text-decoration:none;text-align:center;}
+.note{font-size:0.72rem;color:var(--muted);text-align:center;margin-top:0.8rem;line-height:1.5;}
+
+footer{margin-top:1.5rem;font-size:0.72rem;color:var(--muted);text-align:center;}
+footer a{color:var(--gold);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="card-header">
+    <div class="logo">TrackIQ</div>
+    <div class="logo-sub">Intelligent Handicapping · Smarter Wagering</div>
+    <div class="product">Advanced Race Simulator</div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- Step 1: Form -->
+    <div id="step1">
+      <div class="offer-box">
+        <div class="offer-price">$5.95</div>
+        <div class="offer-reg">Regular price $9.95</div>
+        <div class="offer-details">Weekend Trial · Aug 9 &amp; 10 · 50 Simulation Runs</div>
+        <div class="offer-tracks">Saratoga · Monmouth · Del Mar · Gulfstream</div>
+      </div>
+
+      <label>First Name</label>
+      <input id="f-name" type="text" placeholder="Jane" autocomplete="given-name">
+
+      <label>Email Address</label>
+      <input id="f-email" type="email" placeholder="you@example.com" autocomplete="email">
+
+      <label>Which tracks are you interested in?</label>
+      <div class="track-grid">
+        <div class="track-btn" onclick="toggleTrack(this,'Saratoga')">🏇 Saratoga</div>
+        <div class="track-btn" onclick="toggleTrack(this,'Monmouth')">🏇 Monmouth</div>
+        <div class="track-btn" onclick="toggleTrack(this,'Del Mar')">🏇 Del Mar</div>
+        <div class="track-btn" onclick="toggleTrack(this,'Gulfstream')">🏇 Gulfstream</div>
+      </div>
+
+      <hr class="divider">
+
+      <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">
+        After submitting you'll be directed to PayPal to complete your $5.95 payment.
+        Once paid, click <strong style="color:var(--gold)">Activate My Account</strong> to start simulating.
+      </div>
+
+      <button class="btn-pay" onclick="submitForm()">Continue to Payment →</button>
+      <div class="err" id="form-err"></div>
+    </div>
+
+    <!-- Step 2: Payment -->
+    <div class="step2" id="step2">
+      <div class="success-icon">✅</div>
+      <h2>Almost there, <span id="user-name"></span>!</h2>
+      <p>Click the button below to complete your $5.95 payment via PayPal. Then click <strong style="color:var(--gold)">Activate My Account</strong> to get instant access.</p>
+
+      <a class="btn-paypal" href="https://www.paypal.com/ncp/payment/VRHG3845PDVAW" target="_blank">
+        💳 Pay $5.95 with PayPal
+      </a>
+
+      <hr class="divider">
+
+      <a class="btn-activate" href="/">
+        ✓ I've Paid — Activate My Account
+      </a>
+
+      <div class="note">
+        Your account will be pre-loaded when you arrive.<br>
+        Questions? <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  TrackIQ · Built on Brisnet &amp; Equibase data · <a href="/">Back to app</a>
+</footer>
+
+<script>
+let selectedTracks = [];
+
+function toggleTrack(el, track) {
+  if (selectedTracks.includes(track)) {
+    selectedTracks = selectedTracks.filter(t => t !== track);
+    el.classList.remove('selected');
+  } else {
+    selectedTracks.push(track);
+    el.classList.add('selected');
+  }
+}
+
+function submitForm() {
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const err   = document.getElementById('form-err');
+  err.style.display = 'none';
+
+  if (!name)  { showErr('Please enter your first name.'); return; }
+  if (!email || !email.includes('@')) { showErr('Please enter a valid email address.'); return; }
+
+  const btn = document.querySelector('.btn-pay');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  fetch('/signup', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, email, tracks: selectedTracks.join(', ') })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { showErr(data.error); btn.disabled=false; btn.textContent='Continue to Payment →'; return; }
+    // Store name for app login
+    localStorage.setItem('tiq_name', name);
+    localStorage.setItem('tiq_email', email);
+    // Show step 2
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+    document.getElementById('user-name').textContent = name;
+  })
+  .catch(() => {
+    // Even if server fails, proceed to payment
+    localStorage.setItem('tiq_name', name);
+    localStorage.setItem('tiq_email', email);
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+    document.getElementById('user-name').textContent = name;
+  });
+}
+
+function showErr(msg) {
+  const e = document.getElementById('form-err');
+  e.textContent = msg; e.style.display = 'block';
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Enter') submitForm(); });
+</script>
+</body>
+</html>

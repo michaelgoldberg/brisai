@@ -107,6 +107,43 @@ def index():
 
 SIM_LIMIT = 50
 
+
+@app.route("/signup")
+def signup():
+    return render_template("signup.html")
+
+
+@app.route("/signup", methods=["POST"])
+def signup_post():
+    data  = request.get_json() or {}
+    name  = data.get("name","").strip()
+    email = data.get("email","").strip().lower()
+    tracks = data.get("tracks","").strip()
+
+    if not name or not email:
+        return jsonify({"error": "Name and email are required."}), 400
+
+    # Store in Airtable
+    try:
+        today_str = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
+        existing = _airtable_find_prospect(email)
+        if not existing:
+            _airtable_create_prospect({
+                "Name":        name,
+                "Email":       email,
+                "FirstOpened": today_str,
+                "LastAccess":  today_str,
+                "AccessCount": 0,
+                "SimCount":    0,
+                "SimLimit":    50,
+                "Company":     tracks,
+            })
+    except Exception:
+        pass  # Don't block signup if Airtable fails
+
+    return jsonify({"ok": True})
+
+
 @app.route("/register", methods=["POST"])
 def register():
     data  = request.get_json() or {}

@@ -399,7 +399,30 @@ function updateSimCounter(){
 }
 function checkSimLimit(){ if(simCount>=simLimit){showError('Trial limit reached. Contact mgoldberg@emarketingsg.com to upgrade.');return false;}return true;}
 
-window.addEventListener('load', () => initSamples());
+window.addEventListener('load', () => {
+  // Check if returning from signup/payment
+  const name  = localStorage.getItem('tiq_name');
+  const email = localStorage.getItem('tiq_email');
+  if (name && email) {
+    // Auto-register and open app
+    fetch('/register', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name, email, code:''})
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      if (!data.blocked && !data.error) {
+        openApp(data.sim_count||0, data.sim_limit||50);
+        return;
+      }
+      initSamples();
+    })
+    .catch(()=>{ openApp(0,50); });
+    return;
+  }
+  initSamples();
+});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('gate').style.display!=='none')handleGate();});
 
 function setR(html){document.getElementById('results').innerHTML=html;}
