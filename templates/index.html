@@ -345,34 +345,52 @@ function toggleScr(pp,btn){
 const ACCESS_CODES = ['TIQ2026','TRACKIQ','MG2026'];
 let simCount=0, simLimit=50, userName='';
 
+function openApp(sim_count, sim_limit) {
+  simCount=sim_count||0; simLimit=sim_limit||50;
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app-wrap').style.display='flex';
+  updateSimCounter();
+  initSamples();
+}
+
 function handleGate() {
-  const name  = (document.getElementById('g-name').value||'').trim();
-  const email = (document.getElementById('g-email').value||'').trim();
-  const code  = (document.getElementById('g-code').value||'').trim().toUpperCase();
-  const btn   = document.getElementById('gate-btn');
+  try {
+    const name  = (document.getElementById('g-name').value||'').trim();
+    const email = (document.getElementById('g-email').value||'').trim();
+    const code  = (document.getElementById('g-code').value||'').trim().toUpperCase();
+    const btn   = document.getElementById('gate-btn');
 
-  if (!name)  { showGateErr('Please enter your first name.'); return; }
-  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
+    if (!name)  { showGateErr('Please enter your first name.'); return; }
+    if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
 
-  btn.disabled=true; btn.textContent='Activating…';
+    // Access code — open immediately without server call
+    if (ACCESS_CODES.includes(code)) {
+      openApp(0, 9999);
+      return;
+    }
 
-  fetch('/register', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name, email, code})
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    btn.disabled=false; btn.textContent='Enter with Access Code →';
-    if (data.blocked) { showGateErr('Trial limit reached. Contact mgoldberg@emarketingsg.com to upgrade.'); return; }
-    if (data.error)   { showGateErr(data.error); return; }
-    simCount=data.sim_count||0; simLimit=data.sim_limit||50; userName=name;
-    document.getElementById('gate').style.display='none';
-    document.getElementById('app-wrap').style.display='flex';
-    updateSimCounter();
-    initSamples();
-  })
-  .catch(()=>{ btn.disabled=false; btn.textContent='Enter with Access Code →'; showGateErr('Connection error — please try again.'); });
+    // No access code — try server registration
+    btn.disabled=true; btn.textContent='Activating…';
+
+    fetch('/register', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name, email, code})
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      btn.disabled=false; btn.textContent='Enter with Access Code →';
+      if (data.blocked) { showGateErr('Trial limit reached. Contact mgoldberg@emarketingsg.com to upgrade.'); return; }
+      if (data.error)   { showGateErr(data.error); return; }
+      openApp(data.sim_count, data.sim_limit);
+    })
+    .catch(()=>{
+      btn.disabled=false; btn.textContent='Enter with Access Code →';
+      showGateErr('Connection error — please try again.');
+    });
+  } catch(e) {
+    showGateErr('Error: ' + e.message);
+  }
 }
 
 function showGateErr(msg){ const e=document.getElementById('gate-err'); e.textContent=msg; e.style.display='block'; }
