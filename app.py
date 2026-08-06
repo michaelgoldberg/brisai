@@ -304,8 +304,11 @@ def simulate():
     if weights_json:
         try:
             raw = json.loads(weights_json)
-            # Convert from percentage ints to floats
-            user_weights = {k: int(v)/100 for k, v in raw.items()}
+            # Convert and auto-normalize so they always sum to 1.0
+            raw_floats = {k: max(int(v), 0) for k, v in raw.items()}
+            total = sum(raw_floats.values())
+            if total > 0:
+                user_weights = {k: v/total for k, v in raw_floats.items()}
         except Exception:
             pass
 

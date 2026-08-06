@@ -32,11 +32,11 @@ select:focus{border-color:var(--gold);}
 .wp-title{font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.7rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border);}
 .weight-group{margin-bottom:0.9rem;}
 .wg-label{font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem;}
-.weight-row{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.35rem;}
-.weight-name{font-size:0.72rem;color:var(--text);flex:1;white-space:nowrap;}
-.weight-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
-.weight-slider::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--gold);cursor:pointer;}
-.weight-val{font-size:0.7rem;color:var(--gold2);font-family:var(--mono);width:30px;text-align:right;}
+.weight-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;}
+.weight-name{font-size:0.75rem;color:var(--text);flex:1;white-space:nowrap;}
+.weight-slider{flex:1;-webkit-appearance:none;appearance:none;height:5px;background:var(--border);border-radius:3px;outline:none;cursor:pointer;}
+.weight-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 0 4px rgba(212,168,67,0.5);}
+.weight-val{font-size:0.82rem;color:var(--gold2);font-family:var(--mono);width:28px;text-align:right;font-weight:bold;}
 .total-row{display:flex;justify-content:space-between;font-size:0.72rem;padding:0.4rem 0;border-top:1px solid var(--border);margin-top:0.2rem;}
 .total-label{color:var(--muted);}
 .tv-ok{color:var(--green);font-weight:bold;font-family:var(--mono);}
@@ -148,37 +148,35 @@ table.rtable td{padding:0.38rem 0.6rem;vertical-align:middle;}
   </div>
 
   <div id="weights-panel">
-    <div class="wp-title">⚙ Factor Weights</div>
+    <div class="wp-title">⚙ Factor Weights <span style="font-size:0.6rem;color:var(--muted);font-weight:normal;">(auto-normalized)</span></div>
+
     <div class="weight-group">
-      <div class="wg-label">Pace</div>
-      <div class="weight-row"><span class="weight-name">E1 (Early Pace)</span><input type="range" class="weight-slider" id="w_pace_e1" min="0" max="60" value="27" oninput="updateW()"><span class="weight-val" id="v_pace_e1">27%</span></div>
-      <div class="weight-row"><span class="weight-name">Late Pace (LP)</span><input type="range" class="weight-slider" id="w_pace_lp" min="0" max="60" value="15" oninput="updateW()"><span class="weight-val" id="v_pace_lp">15%</span></div>
-      <div class="weight-row"><span class="weight-name">Position C1</span><input type="range" class="weight-slider" id="w_pos_c1" min="0" max="20" value="6" oninput="updateW()"><span class="weight-val" id="v_pos_c1">6%</span></div>
-      <div class="weight-row"><span class="weight-name">Position Str</span><input type="range" class="weight-slider" id="w_pos_str" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_pos_str">4%</span></div>
-    </div>
-    <div class="weight-group">
-      <div class="wg-label">Speed</div>
-      <div class="weight-row"><span class="weight-name">Best Speed Fig</span><input type="range" class="weight-slider" id="w_best_speed" min="0" max="40" value="14" oninput="updateW()"><span class="weight-val" id="v_best_speed">14%</span></div>
-      <div class="weight-row"><span class="weight-name">Speed Trend</span><input type="range" class="weight-slider" id="w_trend" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_trend">8%</span></div>
+      <div class="wg-label">🏇 Pace</div>
+      <div class="weight-row"><span class="weight-name">E1 Early Pace</span><input type="range" class="weight-slider" id="w_pace_e1" min="0" max="60" value="27" oninput="updateW()"><span class="weight-val" id="v_pace_e1">27</span></div>
+      <div class="weight-row"><span class="weight-name">Late Pace (LP)</span><input type="range" class="weight-slider" id="w_pace_lp" min="0" max="60" value="15" oninput="updateW()"><span class="weight-val" id="v_pace_lp">15</span></div>
+      <div class="weight-row"><span class="weight-name">Position C1</span><input type="range" class="weight-slider" id="w_pos_c1" min="0" max="20" value="6" oninput="updateW()"><span class="weight-val" id="v_pos_c1">6</span></div>
+      <div class="weight-row"><span class="weight-name">Position Str</span><input type="range" class="weight-slider" id="w_pos_str" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_pos_str">4</span></div>
     </div>
     <div class="weight-group">
-      <div class="wg-label">Connections</div>
-      <div class="weight-row"><span class="weight-name">Jockey Win%</span><input type="range" class="weight-slider" id="w_jockey_win_pct" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_jockey_win_pct">8%</span></div>
+      <div class="wg-label">⚡ Speed</div>
+      <div class="weight-row"><span class="weight-name">Best Speed Fig</span><input type="range" class="weight-slider" id="w_best_speed" min="0" max="40" value="14" oninput="updateW()"><span class="weight-val" id="v_best_speed">14</span></div>
+      <div class="weight-row"><span class="weight-name">Speed Trend</span><input type="range" class="weight-slider" id="w_trend" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_trend">8</span></div>
     </div>
     <div class="weight-group">
-      <div class="wg-label">Class & Fit</div>
-      <div class="weight-row"><span class="weight-name">Class</span><input type="range" class="weight-slider" id="w_class" min="0" max="30" value="8" oninput="updateW()"><span class="weight-val" id="v_class">8%</span></div>
-      <div class="weight-row"><span class="weight-name">Distance Fit</span><input type="range" class="weight-slider" id="w_distance_fit" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_distance_fit">4%</span></div>
-      <div class="weight-row"><span class="weight-name">Surface Fit</span><input type="range" class="weight-slider" id="w_surface_fit" min="0" max="20" value="3" oninput="updateW()"><span class="weight-val" id="v_surface_fit">3%</span></div>
-      <div class="weight-row"><span class="weight-name">Condition Fit</span><input type="range" class="weight-slider" id="w_condition_fit" min="0" max="20" value="2" oninput="updateW()"><span class="weight-val" id="v_condition_fit">2%</span></div>
-      <div class="weight-row"><span class="weight-name">Finish Pos</span><input type="range" class="weight-slider" id="w_finish_pos" min="0" max="20" value="1" oninput="updateW()"><span class="weight-val" id="v_finish_pos">1%</span></div>
+      <div class="wg-label">🎽 Jockey</div>
+      <div class="weight-row"><span class="weight-name">Jockey Win%</span><input type="range" class="weight-slider" id="w_jockey_win_pct" min="0" max="20" value="8" oninput="updateW()"><span class="weight-val" id="v_jockey_win_pct">8</span></div>
     </div>
-    <div class="total-row">
-      <span class="total-label">Total</span>
-      <span id="tv" class="tv-ok">100%</span>
+    <div class="weight-group">
+      <div class="wg-label">📋 Class & Fit</div>
+      <div class="weight-row"><span class="weight-name">Class</span><input type="range" class="weight-slider" id="w_class" min="0" max="30" value="8" oninput="updateW()"><span class="weight-val" id="v_class">8</span></div>
+      <div class="weight-row"><span class="weight-name">Distance Fit</span><input type="range" class="weight-slider" id="w_distance_fit" min="0" max="20" value="4" oninput="updateW()"><span class="weight-val" id="v_distance_fit">4</span></div>
+      <div class="weight-row"><span class="weight-name">Surface Fit</span><input type="range" class="weight-slider" id="w_surface_fit" min="0" max="20" value="3" oninput="updateW()"><span class="weight-val" id="v_surface_fit">3</span></div>
+      <div class="weight-row"><span class="weight-name">Condition Fit</span><input type="range" class="weight-slider" id="w_condition_fit" min="0" max="20" value="2" oninput="updateW()"><span class="weight-val" id="v_condition_fit">2</span></div>
+      <div class="weight-row"><span class="weight-name">Finish Pos</span><input type="range" class="weight-slider" id="w_finish_pos" min="0" max="20" value="1" oninput="updateW()"><span class="weight-val" id="v_finish_pos">1</span></div>
     </div>
+
     <button class="btn-reset" onclick="resetW()">↺ Reset to Default</button>
-    <div class="preset-label">Presets:</div>
+    <div class="preset-label">Track Presets:</div>
     <div class="preset-btns">
       <button class="preset-btn" onclick="applyP('speed')">Speed</button>
       <button class="preset-btn" onclick="applyP('pace')">Pace</button>
@@ -218,11 +216,10 @@ function getW(){const w={};FACTORS.forEach(f=>{w[f]=parseInt(document.getElement
 
 function updateW(){
   const w=getW();
-  FACTORS.forEach(f=>{document.getElementById('v_'+f).textContent=w[f]+'%';});
-  const tot=Object.values(w).reduce((a,b)=>a+b,0);
-  const tv=document.getElementById('tv');
-  tv.textContent=tot+'%';
-  tv.className=tot===100?'tv-ok':'tv-over';
+  FACTORS.forEach(f=>{
+    const el=document.getElementById('v_'+f);
+    if(el) el.textContent=w[f];
+  });
 }
 
 function resetW(){FACTORS.forEach(f=>{document.getElementById('w_'+f).value=DEF[f];});updateW();}
@@ -281,8 +278,7 @@ function runSim(){
   if (!checkSimLimit()) return;
   if(!uploadId||!currentKey)return;
   const w=getW();
-  const tot=Object.values(w).reduce((a,b)=>a+b,0);
-  if(tot!==100){showErr('Weights must total 100% — currently '+tot+'%');return;}
+  // Weights auto-normalize — no need to total 100%
   document.getElementById('run-btn').disabled=true;
   setR('<div style="text-align:center;margin-top:4rem;color:var(--muted)"><span class="spinner"></span><br><br>Running 2,000 simulations…</div>');
   hideErr();
