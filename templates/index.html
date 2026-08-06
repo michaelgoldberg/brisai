@@ -368,15 +368,18 @@ function toggleScr(pp,btn){
 }
 
 // ── GATE ──────────────────────────────────────────────────────────────────
+const ACCESS_CODES = ['TIQ2026','TRACKIQ','MG2026'];
 function goToPayment() {
-  const name  = document.getElementById('g-name').value.trim();
-  const email = document.getElementById('g-email').value.trim();
-  const err   = document.getElementById('gate-err');
-  err.style.display = 'none';
-  if (!name) { showGateErr('Please enter your first name.'); return; }
-  if (!email || !email.includes('@')) { showGateErr('Please enter a valid email address.'); return; }
-  document.getElementById('step1').style.display = 'none';
-  document.getElementById('step2').style.display = 'block';
+  const name=document.getElementById('g-name').value.trim();
+  const email=document.getElementById('g-email').value.trim();
+  const codeEl=document.getElementById('g-code');
+  const code=codeEl?codeEl.value.trim().toUpperCase():'';
+  document.getElementById('gate-err').style.display='none';
+  if(!name){showGateErr('Please enter your first name.');return;}
+  if(!email||!email.includes('@')){showGateErr('Please enter a valid email address.');return;}
+  if(code&&ACCESS_CODES.includes(code)){doRegister();return;}
+  document.getElementById('step1').style.display='none';
+  document.getElementById('step2').style.display='block';
 }
 let simCount = 0;
 let simLimit = 50;
