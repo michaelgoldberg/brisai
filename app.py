@@ -77,9 +77,25 @@ def _races_from_parsed(parsed):
 
 # ── ROUTES ────────────────────────────────────────────────────────────────────
 
+
+@app.route("/admin")
+def admin():
+    """Direct access bypass for admin/owner use"""
+    session["name"]  = "Admin"
+    session["email"] = "mgoldberg@emarketingsg.com"
+    session["admin"] = True
+    return redirect("/")
+
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    is_admin = session.get("admin", False)
+    sim_count = 0
+    sim_limit = 50
+    if is_admin:
+        sim_count = 0
+        sim_limit = 9999
+    return render_template("index.html", auto_login=is_admin, sim_count=sim_count, sim_limit=sim_limit)
 
 
 SIM_LIMIT = 50
