@@ -402,6 +402,7 @@ function updateSimCounter(){
 }
 function checkSimLimit(){ if(simCount>=simLimit){showError('Trial limit reached. Contact mgoldberg@emarketingsg.com to upgrade.');return false;}return true;}
 
+window.addEventListener('load', () => initSamples());
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('gate').style.display!=='none')handleGate();});
 
 function setR(html){document.getElementById('results').innerHTML=html;}
