@@ -442,7 +442,7 @@ def run_simulation(race_data, api_key, n_sims=2000, user_weights=None):
         rows.append({
             "program_num":   prog,
             "horse_name":    h["horse_name"],
-            "win_prob_pct":  f"{win_pct*100:.0f}%",
+            "win_prob_pct":  f"{win_pct*100:.1f}%",
             "fair_odds":     fmt_odds(win_pct),
             "morning_line":  fmt_ml(ml_to_decimal(h.get("morning_line",""))),
             "jockey":        h.get("jockey",""),
