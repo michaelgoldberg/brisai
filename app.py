@@ -35,6 +35,7 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
+    "ASD0805": {"label": "Assiniboia Downs - Tue Aug 5 (7 races tonight)", "file": "ASD0805.DRF"},
     "SAR0718": {"label": "Saratoga - Fri Jul 18 (12 races, incl. Diana G1 & Coronation Cup G3)", "file": "SAR0718.DRF"},
     "IND0714": {"label": "Indiana Grand - Mon Jul 14 (10 races)", "file": "IND0714.DRF"},
     "WOX0709": {"label": "Woodbine - Wed Jul 9 (7 races, Tapeta/Dirt)", "file": "WOX0709.DRF"},
