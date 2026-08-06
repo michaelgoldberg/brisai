@@ -105,6 +105,9 @@ def register():
     data  = request.get_json() or {}
     name  = data.get("name", "").strip()
     email = data.get("email", "").strip().lower()
+    code  = data.get("code", "").strip().upper()
+
+    ACCESS_CODES = ["TIQ2026", "TRACKIQ", "MG2026"]
 
     if not name or not email:
         return jsonify({"error": "Name and email are required."}), 400
