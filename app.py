@@ -112,33 +112,40 @@ def register():
     if not name or not email:
         return jsonify({"error": "Name and email are required."}), 400
 
-    today_str = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
-    existing  = _airtable_find_prospect(email)
+    # Access code holders bypass Airtable entirely
+    if code in ACCESS_CODES:
+        session["name"]  = name
+        session["email"] = email
+        return jsonify({"ok": True, "sim_count": 0, "sim_limit": 9999})
 
-    if existing:
-        fields    = existing["fields"]
-        sim_count = int(fields.get("SimCount") or 0)
+    # Regular paid users — track in Airtable
+    try:
+        today_str = datetime.now(timezone.utc).date().strftime("%Y-%m-%d")
+        existing  = _airtable_find_prospect(email)
 
-        if fields.get("Blocked"):
-            return jsonify({"blocked": True})
-        if sim_count >= SIM_LIMIT:
-            return jsonify({"blocked": True})
-
-        _airtable_update_prospect(existing["id"], {
-            "LastAccess": today_str,
-            "AccessCount": (fields.get("AccessCount") or 0) + 1,
-        })
-    else:
+        if existing:
+            fields    = existing["fields"]
+            sim_count = int(fields.get("SimCount") or 0)
+            if fields.get("Blocked") or sim_count >= SIM_LIMIT:
+                return jsonify({"blocked": True})
+            _airtable_update_prospect(existing["id"], {
+                "LastAccess":  today_str,
+                "AccessCount": (fields.get("AccessCount") or 0) + 1,
+            })
+        else:
+            sim_count = 0
+            _airtable_create_prospect({
+                "Name":        name,
+                "Email":       email,
+                "FirstOpened": today_str,
+                "LastAccess":  today_str,
+                "AccessCount": 1,
+                "SimCount":    0,
+                "SimLimit":    SIM_LIMIT,
+            })
+    except Exception:
+        # If Airtable fails, still let user in — log error silently
         sim_count = 0
-        _airtable_create_prospect({
-            "Name":        name,
-            "Email":       email,
-            "FirstOpened": today_str,
-            "LastAccess":  today_str,
-            "AccessCount": 1,
-            "SimCount":    0,
-            "SimLimit":    SIM_LIMIT,
-        })
 
     session["name"]  = name
     session["email"] = email
