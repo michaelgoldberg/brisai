@@ -239,7 +239,7 @@ function uploadFile(e){
 }
 
 function initSamples(){
-  // loaded via initSamples.then(r=>r.json()).then(d=>{
+  fetch('/sample_cards').then(r=>r.json()).then(d=>{
     const sel=document.getElementById('sample-select');
     d.cards.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.label;sel.appendChild(o);});
   }).catch(()=>{});
