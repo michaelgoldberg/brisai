@@ -35,21 +35,13 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
-    # Weekend Trial — Aug 9-10
+    # Weekend Trial — Aug 9-10 (Saratoga & Monmouth only)
     "SAR0809": {"label": "Saratoga - Sat Aug 9", "file": "SAR0809.DRF"},
     "SAR0810": {"label": "Saratoga - Sun Aug 10", "file": "SAR0810.DRF"},
     "MTH0809": {"label": "Monmouth Park - Sat Aug 9", "file": "MTH0809.DRF"},
     "MTH0810": {"label": "Monmouth Park - Sun Aug 10", "file": "MTH0810.DRF"},
-    "DMR0809": {"label": "Del Mar - Sat Aug 9", "file": "DMR0809.DRF"},
-    "DMR0810": {"label": "Del Mar - Sun Aug 10", "file": "DMR0810.DRF"},
-    "GP0809":  {"label": "Gulfstream Park - Sat Aug 9", "file": "GP0809.DRF"},
-    "GP0810":  {"label": "Gulfstream Park - Sun Aug 10", "file": "GP0810.DRF"},
-    # Previous cards
+    # Previous reference cards
     "SAR0718": {"label": "Saratoga - Fri Jul 18 (12 races)", "file": "SAR0718.DRF"},
-    "ASD0805": {"label": "Assiniboia Downs - Tue Aug 5 (7 races)", "file": "ASD0805.DRF"},
-    "IND0714": {"label": "Indiana Grand - Mon Jul 14 (10 races)", "file": "IND0714.DRF"},
-    "PEN0709": {"label": "Penn National - Wed Jul 9 (7 races)", "file": "PEN0709.DRF"},
-    "WOX0709": {"label": "Woodbine - Wed Jul 9 (7 races)", "file": "WOX0709.DRF"},
     "MNR0707": {"label": "Mountaineer Park - Mon Jul 7 (8 races)", "file": "MNR0707.DRF"},
 }
 SAMPLE_DIR = os.path.join(os.path.dirname(__file__), "sample_cards")
