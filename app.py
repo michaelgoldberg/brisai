@@ -35,11 +35,11 @@ race_store = {}
 pick_store = {}
 
 SAMPLE_CARDS = {
-    # Weekend Trial — Aug 8-9
-    "SAR0808": {"label": "Saratoga - Fri Aug 8 (14 races incl. Whitney G1, Test G1, Sar Derby G1)", "file": "SAR0808.DRF"},
-    "SAR0809": {"label": "Saratoga - Sat Aug 9 (11 races incl. Troy G2)", "file": "SAR0809.DRF"},
-    "MTH0808": {"label": "Monmouth Park - Fri Aug 8 (8 races incl. Oceanport B100k)", "file": "MTH0808.DRF"},
-    "MTH0809": {"label": "Monmouth Park - Sat Aug 9 (8 races)", "file": "MTH0809.DRF"},
+    # Weekend Trial — Sat Aug 8 & Sun Aug 9
+    "SAR0808": {"label": "Saratoga - Sat Aug 8 (14 races incl. Whitney G1, Test G1, Sar Derby G1)", "file": "SAR0808.DRF"},
+    "SAR0809": {"label": "Saratoga - Sun Aug 9 (11 races incl. Troy G2)", "file": "SAR0809.DRF"},
+    "MTH0808": {"label": "Monmouth Park - Sat Aug 8 (8 races incl. Oceanport B100k)", "file": "MTH0808.DRF"},
+    "MTH0809": {"label": "Monmouth Park - Sun Aug 9 (8 races)", "file": "MTH0809.DRF"},
     # Previous reference cards
     "SAR0718": {"label": "Saratoga - Fri Jul 18 (12 races)", "file": "SAR0718.DRF"},
     "MNR0707": {"label": "Mountaineer Park - Mon Jul 7 (8 races)", "file": "MNR0707.DRF"},
