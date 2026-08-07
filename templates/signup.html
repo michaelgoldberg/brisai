@@ -90,33 +90,25 @@ footer a{color:var(--gold);text-decoration:none;}
       <hr class="divider">
 
       <div style="font-size:0.78rem;color:var(--muted);line-height:1.6;">
-        After submitting you'll be directed to PayPal to complete your $5.95 payment.
-        Once paid, click <strong style="color:var(--gold)">Activate My Account</strong> to start simulating.
+        After submitting, Mike will email you directly with ordering and payment instructions to activate your account.
       </div>
 
-      <button class="btn-pay" onclick="submitForm()">Continue to Payment →</button>
+      <button class="btn-pay" onclick="submitForm()">Submit Request →</button>
       <div class="err" id="form-err"></div>
     </div>
 
-    <!-- Step 2: Payment -->
+    <!-- Step 2: Confirmation -->
     <div class="step2" id="step2">
       <div class="success-icon">✅</div>
-      <h2>Almost there, <span id="user-name"></span>!</h2>
-      <p>Click the button below to complete your $5.95 payment via PayPal. Then click <strong style="color:var(--gold)">Activate My Account</strong> to get instant access.</p>
+      <h2>Thanks, <span id="user-name"></span>!</h2>
+      <p>Your request has been received. Mike will email you directly at the address you provided with ordering and payment instructions to activate your TrackIQ account.</p>
 
-      <a class="btn-paypal" href="https://www.paypal.com/ncp/payment/VRHG3845PDVAW" target="_blank">
-        💳 Pay $5.95 with PayPal
-      </a>
-
-      <hr class="divider">
-
-      <a class="btn-activate" href="/">
-        ✓ I've Paid — Activate My Account
+      <a class="btn-activate" href="mailto:mgoldberg@emarketingsg.com?subject=TrackIQ%20Weekend%20Trial%20-%20Follow%20Up">
+        ✉️ Email Mike Now
       </a>
 
       <div class="note">
-        Your account will be pre-loaded when you arrive.<br>
-        Questions? <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a>
+        Questions in the meantime? <a href="mailto:mgoldberg@emarketingsg.com">mgoldberg@emarketingsg.com</a>
       </div>
     </div>
 
