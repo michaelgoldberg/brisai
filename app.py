@@ -369,6 +369,48 @@ def simulate():
 
 
 
+@app.route("/exotics")
+def exotics():
+    upload_id = request.args.get("upload_id", "")
+    race_key  = request.args.get("race_key", "")
+
+    if upload_id not in race_store:
+        return jsonify({"error": "Session expired. Please re-upload your file."}), 400
+    races = race_store[upload_id]
+    if race_key not in races:
+        return jsonify({"error": "Race not found."}), 400
+
+    race      = races[race_key]
+    scratched = [s.strip() for s in request.args.get("scratched", "").split(",") if s.strip()]
+
+    if scratched:
+        import copy
+        race = copy.deepcopy(race)
+        race["horses"] = [h for h in race.get("horses", []) if str(h.get("program_num","")) not in scratched]
+
+    user_weights = None
+    weights_json = request.args.get("weights", "")
+    if weights_json:
+        try:
+            raw = json.loads(weights_json)
+            raw_floats = {k: max(int(v), 0) for k, v in raw.items()}
+            total = sum(raw_floats.values())
+            if total > 0:
+                user_weights = {k: v/total for k, v in raw_floats.items()}
+        except Exception:
+            pass
+
+    field_limit = int(request.args.get("field_limit", "8"))
+
+    sim_result = run_simulation(race, ANTHROPIC_API_KEY, user_weights=user_weights)
+    if sim_result.get("error"):
+        return jsonify(sim_result), 400
+
+    from simulate import build_exotic_report
+    report = build_exotic_report(sim_result, field_limit=field_limit)
+    return jsonify(report)
+
+
 @app.route("/pace_projection")
 def pace_projection():
     upload_id = request.args.get("upload_id", "")

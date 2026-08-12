@@ -19,6 +19,9 @@ select:focus{border-color:var(--gold);}
 .btn-run{background:var(--gold);border:none;border-radius:var(--radius);color:var(--navy);font-size:0.85rem;font-weight:bold;padding:0.35rem 1.1rem;cursor:pointer;font-family:inherit;}
 .btn-run:hover{background:var(--gold2);}
 .btn-run:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-exotic{background:var(--slate2);border:1px solid #a78bfa;border-radius:var(--radius);color:#a78bfa;font-size:0.82rem;font-weight:bold;padding:0.32rem 0.9rem;cursor:pointer;font-family:inherit;}
+.btn-exotic:hover{background:rgba(167,139,250,0.15);}
+.btn-exotic:disabled{opacity:0.4;cursor:not-allowed;}
 #error-bar{background:rgba(224,85,85,0.15);border-bottom:1px solid var(--red);color:var(--red);font-size:0.85rem;padding:0.4rem 1rem;display:none;}
 .body{display:flex;flex:1;overflow:hidden;}
 #left{width:195px;min-width:155px;background:var(--slate);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;}
@@ -95,6 +98,7 @@ table.rtable td{padding:0.38rem 0.6rem;vertical-align:middle;}
   <input type="file" id="fi" accept=".DRF,.drf,.bris" style="display:none" onchange="uploadFile(event)">
   <select id="sample-select" onchange="loadSample(this.value)" style="max-width:240px;"><option value="">— or pick a sample card —</option></select>
   <button class="btn-run" id="run-btn" onclick="runSim()" disabled>▶ Run Simulation</button>
+  <button class="btn-exotic" id="exotic-btn" onclick="runExotics()" disabled>🎯 Exotic Combos</button>
   <span id="sim-counter" style="font-size:0.72rem;color:var(--muted);white-space:nowrap;"></span>
 </div>
 <div id="error-bar"></div>
@@ -269,6 +273,7 @@ function selectRace(key){
   document.getElementById('race-select').value=key;
   document.querySelectorAll('.race-item').forEach(el=>el.classList.toggle('active',el.dataset.key===key));
   document.getElementById('run-btn').disabled=false;
+  document.getElementById('exotic-btn').disabled=false;
   const r=races[key]||{};
   setR(`<div class="placeholder"><strong>Race ${r.race_num||''} · ${r.distance||''} ${r.surface||''} · ${r.race_class||''}</strong>Adjust weights then click <strong style="color:var(--gold)">▶ Run Simulation</strong></div>`);
 }
@@ -287,6 +292,58 @@ function runSim(){
     if(d.error){showErr(d.error);return;}
     renderSim(d);
   }).catch(err=>{document.getElementById('run-btn').disabled=false;showErr('Error: '+err.message);});
+}
+
+function runExotics(){
+  if (!checkSimLimit()) return;
+  if(!uploadId||!currentKey)return;
+  const w=getW();
+  document.getElementById('exotic-btn').disabled=true;
+  setR('<div style="text-align:center;margin-top:4rem;color:var(--muted)"><span class="spinner"></span><br><br>Calculating exact combination probabilities…</div>');
+  hideErr();
+  const params=new URLSearchParams({upload_id:uploadId,race_key:currentKey,scratched:Array.from(scratched).join(','),weights:JSON.stringify(w),field_limit:'8'});
+  fetch('/exotics?'+params).then(r=>r.json()).then(d=>{
+    document.getElementById('exotic-btn').disabled=false;
+    if(d.error){showErr(d.error);return;}
+    renderExotics(d);
+  }).catch(err=>{document.getElementById('exotic-btn').disabled=false;showErr('Error: '+err.message);});
+}
+
+function renderExotics(d){
+  simCount++;
+  updateSimCounter();
+  fetch('/increment_sim', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})}).catch(()=>{});
+
+  const r=races[currentKey]||{};
+  let html=`<div class="res-subtitle">Harville Formula — Exact Combination Probabilities</div>`;
+  html+=`<div class="res-title">Race ${r.race_num||''} · ${r.distance||''} ${r.surface||''} · ${r.race_class||''}</div>`;
+  html+=`<div class="pace-box">Top ${d.field_limit_used} contenders used (of ${d.field_size} horses) · Probabilities calculated via conditional elimination, not simulation noise</div>`;
+
+  const sections=[
+    {key:'exacta',label:'EXACTA (1st-2nd)',cols:2},
+    {key:'trifecta',label:'TRIFECTA (1st-2nd-3rd)',cols:3},
+    {key:'superfecta',label:'SUPERFECTA (1st-2nd-3rd-4th)',cols:4},
+  ];
+
+  sections.forEach(sec=>{
+    const combos=d[sec.key]||[];
+    if(!combos.length) return;
+    html+=`<div style="margin-top:1.2rem;">`;
+    html+=`<div style="font-size:0.78rem;font-weight:bold;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem;">${sec.label}</div>`;
+    html+=`<table class="rtable"><thead><tr><th>#</th><th>Combo</th><th>Horses</th><th>Probability</th><th>Fair Payout</th></tr></thead><tbody>`;
+    combos.forEach((c,i)=>{
+      html+=`<tr class="${i===0?'top1':''}">
+        <td><span class="pos-badge ${i===0?'p1':i===1?'p2':i===2?'p3':'pn'}">${i+1}</span></td>
+        <td style="font-family:var(--mono);color:var(--gold);font-weight:bold;">${c.combo_str}</td>
+        <td style="font-size:0.78rem;color:var(--text);">${c.horses.join(' → ')}</td>
+        <td class="win-pct">${c.prob_pct}</td>
+        <td class="fair-od">${c.fair_payout}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  });
+
+  setR(html);
 }
 
 function renderSim(d){

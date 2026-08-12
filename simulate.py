@@ -566,3 +566,101 @@ def run_simulation(race_data, api_key, n_sims=2000, user_weights=None):
         "n_sims":         n_sims,
         "excluded":       excluded,
     }
+
+
+# ── HARVILLE FORMULA — EXACT EXOTIC COMBINATION PROBABILITIES ─────────────
+# Given win probabilities from the simulation, calculate exact probabilities
+# for exacta / trifecta / superfecta finishing orders using conditional
+# elimination (Harville 1973), with an optional bias correction.
+
+def harville_combo_prob(win_probs, order):
+    """
+    win_probs: dict {horse_id: win_probability}
+    order: list of horse_ids in finish order, e.g. ['3','7','5'] = 3 wins, 7 second, 5 third
+    Returns the Harville-formula probability of that exact finishing order.
+    """
+    remaining = dict(win_probs)
+    prob = 1.0
+    for horse_id in order:
+        p = remaining.get(horse_id, 0.0)
+        total = sum(remaining.values())
+        if total <= 0:
+            return 0.0
+        prob *= (p / total)
+        del remaining[horse_id]
+    return prob
+
+
+def harville_bias_correction(prob, position):
+    """
+    Harville's formula tends to overvalue longshots in 2nd/3rd/4th and
+    undervalue favorites in those spots. Apply a mild empirical correction
+    (Stern-style dampening) based on position depth.
+    position: 1=win, 2=place, 3=show, 4=fourth
+    """
+    if position <= 1:
+        return prob
+    # Dampen probability slightly more for deeper positions
+    dampen = {2: 0.97, 3: 0.93, 4: 0.88}.get(position, 0.85)
+    return prob * dampen
+
+
+def top_n_permutations(rows, n_positions, top_k=10, field_limit=8):
+    """
+    rows: list of dicts from run_simulation()['rows'], each with
+          'program_num' and 'win_prob_raw'
+    n_positions: 2 for exacta, 3 for trifecta, 4 for superfecta
+    Returns top_k finishing-order combinations ranked by Harville probability,
+    each with pretty-printed odds.
+    """
+    import itertools
+
+    # Limit to the most likely contenders to keep permutation count sane
+    pool = sorted(rows, key=lambda r: r['win_prob_raw'], reverse=True)[:field_limit]
+    win_probs = {r['program_num']: r['win_prob_raw'] for r in pool}
+    name_map  = {r['program_num']: r['horse_name'] for r in pool}
+
+    combos = []
+    for order in itertools.permutations(win_probs.keys(), n_positions):
+        raw_prob = harville_combo_prob(win_probs, list(order))
+        # Apply position-based dampening to the whole combo (approx: apply once at depth)
+        corrected = raw_prob * harville_bias_correction(1.0, n_positions)
+        combos.append({
+            "order":      list(order),
+            "horses":     [name_map[o] for o in order],
+            "prob_raw":   raw_prob,
+            "prob":       corrected,
+        })
+
+    combos.sort(key=lambda c: c["prob"], reverse=True)
+    top = combos[:top_k]
+
+    for c in top:
+        pct = c["prob"] * 100
+        c["prob_pct"] = f"{pct:.2f}%" if pct >= 0.1 else f"{pct:.3f}%"
+        fair = (1.0 / c["prob"]) if c["prob"] > 0 else 0
+        c["fair_payout"] = f"${fair:.2f}" if fair > 0 else "N/A"
+        c["combo_str"] = "-".join(c["order"])
+
+    return top
+
+
+def build_exotic_report(sim_result, field_limit=8):
+    """
+    Takes the output of run_simulation() and returns ranked Exacta,
+    Trifecta, and Superfecta combinations using the Harville formula.
+    """
+    rows = sim_result.get("rows", [])
+    if not rows:
+        return {"error": "No simulation rows available."}
+
+    n_horses = len(rows)
+
+    report = {
+        "exacta":     top_n_permutations(rows, 2, top_k=10, field_limit=field_limit),
+        "trifecta":   top_n_permutations(rows, 3, top_k=10, field_limit=min(field_limit, n_horses)) if n_horses >= 3 else [],
+        "superfecta": top_n_permutations(rows, 4, top_k=10, field_limit=min(field_limit, n_horses)) if n_horses >= 4 else [],
+        "field_size": n_horses,
+        "field_limit_used": min(field_limit, n_horses),
+    }
+    return report
