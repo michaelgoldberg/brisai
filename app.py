@@ -36,6 +36,7 @@ pick_store = {}
 
 SAMPLE_CARDS = {
     "SAR0814": {"label": "Saratoga - Fri Aug 14 (10 races incl. Smart N Fancy L200k)", "file": "SAR0814.DRF"},
+    "SAR0815": {"label": "Saratoga - Sat Aug 15 (12 races incl. Grade 1 + Galway S. L200k)", "file": "SAR0815.DRF"},
     # Weekend Trial — Sat Aug 8 & Sun Aug 9
     "SAR0808": {"label": "Saratoga - Sat Aug 8 (14 races incl. Whitney G1, Test G1, Sar Derby G1)", "file": "SAR0808.DRF"},
     "SAR0809": {"label": "Saratoga - Sun Aug 9 (11 races incl. Troy G2)", "file": "SAR0809.DRF"},
